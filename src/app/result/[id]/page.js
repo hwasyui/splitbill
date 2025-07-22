@@ -30,6 +30,86 @@ export default function ResultPage() {
     setShowToast(true);
   };
 
+  const generatePDF = async (data) => {
+  const html2pdf = (await import('html2pdf.js')).default;
+  // Manually because html2pdf doesn't support oklch colors yet
+  const html = `
+    <div style="max-width: 600px; margin: 0 auto; background: white; padding: 24px; font-family: monospace; color: #3A2C5A; border: 1px solid #E2D6F3; border-radius: 12px;">
+      <h1 style="text-align:center; font-size: 24px; font-weight: bold; margin-bottom: 8px;">Receipt</h1>
+      <p style="text-align:center; font-size: 12px; color: #5A4B81; margin-bottom: 4px;">${data.restaurant} | ${data.date}</p>
+      <p style="text-align:center; font-size: 12px; color: #8B7BA2; font-style: italic; margin-bottom: 16px;">Split Type: ${data.splitType === 'unit' ? 'Per Unit' : 'Flexible'}</p>
+      
+      <h2 style="font-weight: bold; margin-top: 16px;">Order Summary</h2>
+      ${data.items.map(item => `
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <div>
+            ${item.name} × ${item.qty}
+            <div style="font-size: 12px; color: gray; margin-left: 16px;">Rp ${item.price.toLocaleString()} / item</div>
+          </div>
+          <div>Rp ${(item.price * item.qty).toLocaleString()}</div>
+        </div>`).join('')}
+
+      <div style="display:flex; justify-content:space-between; border-top: 1px dashed #ccc; padding-top: 8px; margin-top: 8px;">
+        <span>Tax</span>
+        <span>Rp ${data.tax.toLocaleString()}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; border-top: 1px dashed #999; font-weight: bold; padding-top: 8px; margin-top: 8px;">
+        <span>Grand Total</span>
+        <span>Rp ${(
+          data.items.reduce((sum, item) => sum + item.price * item.qty, 0) + data.tax
+        ).toLocaleString()}</span>
+      </div>
+
+      <hr style="border-top: 1px dashed #ccc; margin: 16px 0;" />
+
+      ${data.split.map(person => `
+        <div style="margin-bottom: 16px;">
+          <h3 style="font-size: 16px; font-weight: bold; border-bottom: 1px solid #ddd; margin-bottom: 4px;">${person.name}</h3>
+          ${data.splitType === 'unit' && person.items?.length ? `
+            <div style="font-size: 12px; color: #5A4B81;">
+              ${person.items.map(i => `
+                <div style="display:flex; justify-content:space-between;">
+                  <span>${i.name} × ${i.qty}</span>
+                  <span>Rp ${i.total.toLocaleString()}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+          <div style="display:flex; justify-content:space-between;">
+            <span>Subtotal</span>
+            <span>Rp ${person.subtotal.toLocaleString()}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span>Tax Share</span>
+            <span>Rp ${person.tax.toLocaleString()}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-weight: bold; border-top: 1px dashed #ccc; margin-top: 8px; padding-top: 4px;">
+            <span>Total</span>
+            <span>Rp ${person.total.toLocaleString()}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  const container = document.createElement('div');
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  const opt = {
+    margin: 0.5,
+    filename: 'receipt.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+  };
+
+  html2pdf().from(container).set(opt).save().then(() => {
+    document.body.removeChild(container);
+  });
+};
+
+
 
   if (!resultData) return <p className="p-10 text-center">Loading...</p>;
 
@@ -135,6 +215,13 @@ export default function ResultPage() {
         >
           Share Link
         </Button>
+        <Button
+  onClick={() => generatePDF(resultData)}
+  className="bg-[#DCCEF7] text-[#3A2C5A] hover:bg-[#cdb3ef]"
+>
+  <Download className="w-4 h-4 mr-1" /> Download PDF
+</Button>
+
       </div>
     </main>
   );
