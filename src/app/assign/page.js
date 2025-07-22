@@ -3,11 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Plus, User } from 'lucide-react';
+import { Plus, User, Minus, PlusCircle, MinusCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 const generateRandomColor = () => {
   const colors = ['#F5C24C', '#FF6B6B', '#6BCB77', '#4D96FF', '#F9A826', '#8E7AB5', '#FF9F1C'];
@@ -42,36 +49,50 @@ export default function AssignPage() {
     setDialogOpen(false);
   };
 
+  const incrementQty = (itemIndex, profileId) => {
+    const current = unitAssignments[itemIndex] || {};
+    const item = receiptData.items[itemIndex];
+    const newCount = (current[profileId] || 0) + 1;
+    const totalAssigned = Object.values(current).reduce((a, b) => a + b, 0);
+
+    if (newCount + totalAssigned - (current[profileId] || 0) <= item.qty) {
+      setUnitAssignments({
+        ...unitAssignments,
+        [itemIndex]: {
+          ...current,
+          [profileId]: newCount,
+        },
+      });
+    }
+  };
+
+  const decrementQty = (itemIndex, profileId) => {
+    const current = unitAssignments[itemIndex] || {};
+    const newCount = (current[profileId] || 0) - 1;
+    if (newCount >= 0) {
+      setUnitAssignments({
+        ...unitAssignments,
+        [itemIndex]: {
+          ...current,
+          [profileId]: newCount,
+        },
+      });
+    }
+  };
+
   const toggleAssignment = (itemIndex, profileId) => {
-    if (splitType === 'unit') {
-      const current = unitAssignments[itemIndex] || {};
-      const newCount = (current[profileId] || 0) + 1;
-
-      const item = receiptData.items[itemIndex];
-      const totalAssigned = Object.values(current).reduce((a, b) => a + b, 0);
-
-      if (newCount + totalAssigned - (current[profileId] || 0) <= item.qty) {
-        setUnitAssignments({
-          ...unitAssignments,
-          [itemIndex]: {
-            ...current,
-            [profileId]: newCount,
-          },
-        });
-      }
+    if (splitType === 'unit') return;
+    const current = assignments[itemIndex] || [];
+    if (current.includes(profileId)) {
+      setAssignments({
+        ...assignments,
+        [itemIndex]: current.filter(id => id !== profileId),
+      });
     } else {
-      const current = assignments[itemIndex] || [];
-      if (current.includes(profileId)) {
-        setAssignments({
-          ...assignments,
-          [itemIndex]: current.filter(id => id !== profileId),
-        });
-      } else {
-        setAssignments({
-          ...assignments,
-          [itemIndex]: [...current, profileId],
-        });
-      }
+      setAssignments({
+        ...assignments,
+        [itemIndex]: [...current, profileId],
+      });
     }
   };
 
@@ -81,7 +102,6 @@ export default function AssignPage() {
     const items = receiptData.items || [];
     const tax = receiptData.tax || 0;
 
-    // Initialize all existing profiles
     tempProfiles.forEach(p => {
       subtotalPerPerson[p.id] = {
         id: p.id,
@@ -91,7 +111,6 @@ export default function AssignPage() {
       };
     });
 
-    // Unit-based split
     if (splitType === 'unit') {
       items.forEach((item, index) => {
         const assigned = unitAssignments[index] || {};
@@ -139,10 +158,7 @@ export default function AssignPage() {
           });
         }
       });
-    }
-
-    // Flexible split
-    else {
+    } else {
       items.forEach((item, index) => {
         const totalItemCost = item.qty * item.price;
         const assignedProfiles = assignments[index] || [];
@@ -158,7 +174,7 @@ export default function AssignPage() {
             tempProfiles.push({
               id: unassignedId,
               name: 'Unassigned Subtotals',
-              color: '#CCCCCC',
+              color: generateRandomColor()
             });
             subtotalPerPerson[unassignedId] = {
               id: unassignedId,
@@ -220,16 +236,17 @@ export default function AssignPage() {
         <p className="text-[#5A4B81] mb-2">
           Restaurant: {receiptData.restaurant} | Date: {receiptData.date} | Tax: Rp {receiptData.tax.toLocaleString()}
         </p>
-        <div className="mb-4">
+        <div className="mb-4 mt-5 flex flex-col sm:flex-row items-center justify-center">
           <label className="font-medium mr-4">Split Type:</label>
-          <select
-            value={splitType}
-            onChange={e => setSplitType(e.target.value)}
-            className="border px-2 py-1 rounded bg-white text-[#3A2C5A]"
-          >
-            <option value="flexible">Flexible (Shared Price)</option>
-            <option value="unit">Unit (Assign Qty)</option>
-          </select>
+          <Select value={splitType} onValueChange={setSplitType}>
+            <SelectTrigger className="w-[260px] border-[#DCCEF7] mt-2 bg-white text-[#3A2C5A] focus:ring-[#BCA1E2]">
+              <SelectValue placeholder="Select split type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="flexible">Flexible (Shared Price)</SelectItem>
+              <SelectItem value="unit">Unit (Assign Qty)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -305,23 +322,32 @@ export default function AssignPage() {
                     ? (unitAssignments[index]?.[p.id] || 0) > 0
                     : (assignments[index] || []).includes(p.id);
                   const qty = unitAssignments[index]?.[p.id] || 0;
+
                   return (
-                    <div
-                      key={p.id}
-                      onClick={() => toggleAssignment(index, p.id)}
-                      className={`cursor-pointer w-14 h-14 rounded-full flex flex-col items-center justify-center text-center text-xs font-medium shadow transition-transform duration-200 ${isAssigned ? 'scale-105 ring-2 ring-offset-2 ring-white' : 'opacity-80'
-                        }`}
-                      style={{
-                        backgroundColor: isAssigned ? p.color : '#F3EFFF',
-                        color: isAssigned ? '#fff' : '#3A2C5A',
-                      }}
-                    >
-                      <User className="w-5 h-5" />
-                      <span>
+                    <div key={p.id} className="flex flex-col items-center">
+                      <div
+                        onClick={() => toggleAssignment(index, p.id)}
+                        className={`cursor-pointer w-14 h-14 rounded-full flex flex-col items-center justify-center text-xs font-medium shadow transition-transform duration-200 ${isAssigned ? 'ring-2 ring-offset-2 ring-white' : 'opacity-80'}`}
+                        style={{
+                          backgroundColor: isAssigned ? p.color : '#F3EFFF',
+                          color: isAssigned ? '#fff' : '#3A2C5A',
+                        }}
+                      >
+                        <User className="w-5 h-5" />
                         {p.name.length > 6 ? `${p.name.slice(0, 4)}..` : p.name}
-                      </span>
-                      {splitType === 'unit' && qty > 0 && (
-                        <span className="text-xs font-bold">{qty}x</span>
+                        {splitType === 'unit' && qty > 0 && (
+                          <span className="text-xs font-bold">{qty}x</span>
+                        )}
+                      </div>
+                      {splitType === 'unit' && (
+                        <div className="flex">
+                          <Button variant="ghost" size="icon" className="hover:cursor-pointer" onClick={() => decrementQty(index, p.id)}>
+                            <Minus className="w-3 h-3 text-red-500" strokeWidth={3}/>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="hover:cursor-pointer" onClick={() => incrementQty(index, p.id)}>
+                            <Plus className="w-3 h-3 text-yellow-500" strokeWidth={3}/>
+                          </Button>
+                        </div>
                       )}
                     </div>
                   );

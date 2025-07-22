@@ -5,9 +5,11 @@ import { ArrowDown, Camera, Trash } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Loader from "@/components/ui/loader";
 
 export default function HomePage() {
   const uploadRef = useRef(null);
+  const aiReceiptRef = useRef(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -39,8 +41,12 @@ export default function HomePage() {
         const data = await res.json();
         setLoading(false);
 
-        setAiResult(data); // 👈 Store AI result in state
-        localStorage.setItem("receiptData", JSON.stringify(data)); // Still store for /assign
+        setAiResult(data);
+        localStorage.setItem("receiptData", JSON.stringify(data));
+
+        setTimeout(() => {
+          aiReceiptRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
       } catch (error) {
         console.error("Error uploading to API:", error);
         setLoading(false);
@@ -53,13 +59,8 @@ export default function HomePage() {
   };
 
   return (
-    <main className="bg-[#FFF8F0] text-[#3A2C5A] h-screen overflow-y-auto snap-y snap-mandatory">
-      {loading && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white text-center">
-          <div className="loader mb-4" />
-          <p className="text-lg text-[#5A4B81]">AI Processing your receipts...</p>
-        </div>
-      )}
+    <main className="bg-[#FFF8F0] text-[#3A2C5A] min-h-screen overflow-y-auto snap-y snap-mandatory">
+      {loading && <Loader message="AI Processing your receipts..." />}
 
       {/* Landing Section */}
       <section className="snap-start min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
@@ -132,116 +133,127 @@ export default function HomePage() {
           />
         </div>
       </section>
-        {aiResult && (
-          <section className="snap-start mt-10 w-full max-w-2xl center mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-4 text-center">Receipt Info</h1>
-            {/* Items Section */}
-            <div className="snap-start p-6 bg-[#F9F5FF] rounded-xl border border-[#E2D6F3]">
-              <h3 className="text-xl font-semibold mb-4 text-center">General Information</h3>
-              <div className="flex flex-col border rounded-lg p-4 bg-white mb-4">
-                <label className="text-sm text-[#5A4B81]">Restaurant</label>
-                <input
-                  className="border rounded px-3 py-2 text-sm"
-                  value={aiResult.restaurant}
-                  onChange={(e) =>
-                    setAiResult({ ...aiResult, restaurant: e.target.value })
-                  }
-                />
-              </div>
-              <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white">
-                <label className="text-sm text-[#5A4B81]">Date</label>
-                <input
-                  className="border rounded px-3 py-2 text-sm"
-                  value={aiResult.date}
-                  onChange={(e) =>
-                    setAiResult({ ...aiResult, date: e.target.value })
-                  }
-                />
-              </div>
-              <h3 className="text-xl font-semibold mb-4 text-center">Items</h3>
-              <div className="space-y-4">
-                {aiResult.items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex flex-col gap-2 border rounded-lg p-4 bg-white shadow-sm relative"
-                  >
-                    <div className="absolute top-3 right-3 text-red-500 cursor-pointer">
-                      <Trash
-                        onClick={() => {
-                          const updatedItems = aiResult.items.filter(
-                            (_, i) => i !== index
-                          );
-                          setAiResult({ ...aiResult, items: updatedItems });
-                        }}
-                        size={18}
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <label className="text-sm text-[#5A4B81]">Name</label>
+
+      {/* AI Receipt Result Section */}
+      {aiResult && (
+        <section
+          ref={aiReceiptRef}
+          className="snap-start w-full max-w-4xl mx-auto px-4 py-10"
+        >
+          <h1 className="text-3xl font-bold mb-6 text-center">Receipt Info</h1>
+
+          <div className="bg-[#F9F5FF] rounded-xl border border-[#E2D6F3] p-6">
+            <h3 className="text-xl font-semibold mb-4 text-center">General Information</h3>
+
+            <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white ">
+              <label className="text-sm text-[#5A4B81]">Restaurant</label>
+              <input
+                className="border rounded px-3 py-2 text-sm"
+                value={aiResult.restaurant}
+                onChange={(e) =>
+                  setAiResult({ ...aiResult, restaurant: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white ">
+              <label className="text-sm text-[#5A4B81]">Date</label>
+              <input
+                className="border rounded px-3 py-2 text-sm"
+                value={aiResult.date}
+                onChange={(e) =>
+                  setAiResult({ ...aiResult, date: e.target.value })
+                }
+              />
+            </div>
+
+            <h3 className="text-xl font-semibold mb-4 text-center">Items</h3>
+
+            <div className="space-y-4">
+              {aiResult.items.map((item) => (
+                <div
+                  key={item.name}
+                  className="flex flex-col gap-2 border rounded-lg p-4 bg-white shadow-sm relative"
+                >
+                  <div className="absolute top-3 right-3 text-red-500 cursor-pointer">
+                    <Trash
+                      onClick={() => {
+                        const updatedItems = aiResult.items.filter((_, i) => i !== index);
+                        setAiResult({ ...aiResult, items: updatedItems });
+                      }}
+                      size={18}
+                    />
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className="text-sm text-[#5A4B81]">Name</label>
+                    <input
+                      className="border rounded px-3 py-2 text-sm"
+                      value={item.name}
+                      onChange={(e) => {
+                        const updatedItems = [...aiResult.items];
+                        updatedItems[index].name = e.target.value;
+                        setAiResult({ ...aiResult, items: updatedItems });
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 flex flex-col">
+                      <label className="text-sm text-[#5A4B81]">Qty</label>
                       <input
+                        type="number"
                         className="border rounded px-3 py-2 text-sm"
-                        value={item.name}
+                        value={item.qty}
                         onChange={(e) => {
                           const updatedItems = [...aiResult.items];
-                          updatedItems[index].name = e.target.value;
+                          updatedItems[index].qty = parseInt(e.target.value) || 0;
                           setAiResult({ ...aiResult, items: updatedItems });
                         }}
                       />
                     </div>
-                    <div className="flex gap-4">
-                      <div className="flex-1 flex flex-col">
-                        <label className="text-sm text-[#5A4B81]">Qty</label>
-                        <input
-                          type="number"
-                          className="border rounded px-3 py-2 text-sm"
-                          value={item.qty}
-                          onChange={(e) => {
-                            const updatedItems = [...aiResult.items];
-                            updatedItems[index].qty = parseInt(e.target.value) || 0;
-                            setAiResult({ ...aiResult, items: updatedItems });
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1 flex flex-col">
-                        <label className="text-sm text-[#5A4B81]">Price</label>
-                        <input
-                          type="number"
-                          className="border rounded px-3 py-2 text-sm"
-                          value={item.price}
-                          onChange={(e) => {
-                            const updatedItems = [...aiResult.items];
-                            updatedItems[index].price = parseInt(e.target.value) || 0;
-                            setAiResult({ ...aiResult, items: updatedItems });
-                          }}
-                        />
-                      </div>
+                    <div className="flex-1 flex flex-col">
+                      <label className="text-sm text-[#5A4B81]">Price</label>
+                      <input
+                        type="number"
+                        className="border rounded px-3 py-2 text-sm"
+                        value={item.price}
+                        onChange={(e) => {
+                          const updatedItems = [...aiResult.items];
+                          updatedItems[index].price = parseInt(e.target.value) || 0;
+                          setAiResult({ ...aiResult, items: updatedItems });
+                        }}
+                      />
                     </div>
                   </div>
-                ))}
-              </div>
-              <h3 className="text-xl font-semibold mb-4 text-center mt-4">Tax</h3>
-              <div className="flex flex-col border rounded-lg p-4 bg-white">
-                <label className="text-sm text-[#5A4B81]">Tax Amount</label>
-                <input
-                  type="number"
-                  className="border rounded px-3 py-2 text-sm"
-                  value={aiResult.tax}
-                  onChange={(e) =>
-                    setAiResult({ ...aiResult, tax: parseInt(e.target.value) || 0 })
-                  }
-                />
-              </div>
+                </div>
+              ))}
             </div>
-            <div className="text-center">
-              <Button
-                onClick={goToAssignPage}
-                className="mt-6 bg-[#F5C24C] text-[#3A2C5A] hover:bg-[#ecc043]"
-              >
-                Assign Split Bill →
-              </Button>
+
+            <h3 className="text-xl font-semibold mb-4 text-center mt-6">Tax</h3>
+            <div className="flex flex-col border rounded-lg p-4 bg-white ">
+              <label className="text-sm text-[#5A4B81]">Tax Amount</label>
+              <input
+                type="number"
+                className="border rounded px-3 py-2 text-sm"
+                value={aiResult.tax}
+                onChange={(e) =>
+                  setAiResult({ ...aiResult, tax: parseInt(e.target.value) || 0 })
+                }
+              />
             </div>
-          </section>
-        )}
+          </div>
+
+          <div className="text-center">
+            <Button
+              onClick={goToAssignPage}
+              className="mt-6 bg-[#F5C24C] text-[#3A2C5A] hover:bg-[#ecc043]"
+            >
+              Assign Split Bill →
+            </Button>
+          </div>
+        </section>
+      )}
     </main>
   );
 }
