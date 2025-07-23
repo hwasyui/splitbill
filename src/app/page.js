@@ -18,6 +18,7 @@ export default function HomePage() {
   const [aiResult, setAiResult] = useState(null);
 
   const router = useRouter();
+  
 
   const scrollToUpload = () => {
     uploadRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -62,8 +63,7 @@ export default function HomePage() {
   return (
     <main className="bg-[#FFF8F0] text-[#3A2C5A]">
       {loading && <Loader message="AI reading and preparing your receipts data. Please wait patiently." />}
-      <div className="snap-y snap-mandatory">
-        <section className="snap-start min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
+        <section className="min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -94,7 +94,7 @@ export default function HomePage() {
 
           <ArrowDown onClick={scrollToUpload} className="mt-12 animate-bounce text-[#BCA1E2] w-8 h-8" />
         </section>
-        <section ref={uploadRef} className="snap-start min-h-screen flex flex-col justify-center items-center px-6 py-24 bg-white text-center">
+        <section ref={uploadRef} className="min-h-screen flex flex-col justify-center items-center px-6 py-24 bg-white text-center">
           <h2 className="text-3xl md:text-4xl font-semibold text-[#3A2C5A] mb-6">Upload or Scan Your Receipt</h2>
           <p className="text-md md:text-lg text-[#5A4B81] mb-8 max-w-xl">
             Drag and drop your receipt here, or use your camera.
@@ -131,7 +131,6 @@ export default function HomePage() {
             />
           </div>
         </section>
-      </div>
 
       {aiResult && (
         <section

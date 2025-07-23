@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://splitbill.angelicas.xyz/sitemap.xml
