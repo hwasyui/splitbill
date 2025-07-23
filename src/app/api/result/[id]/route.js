@@ -18,7 +18,6 @@ export async function GET(req, { params }) {
     return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
   }
 
-  // Remove MongoDB _id and createdAt before sending
   delete result._id;
   delete result.createdAt;
 

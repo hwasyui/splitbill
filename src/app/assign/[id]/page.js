@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Plus, User, Minus, UtensilsCrossed } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import Loader from '@/components/ui/loader';
 import Footer from '@/components/ui/footer';
 import {
     Select,
@@ -24,6 +25,9 @@ const generateRandomColor = () => {
 
 export default function AssignPage() {
     const router = useRouter();
+    const params = useParams();
+    const { id } = params;
+
     const [receiptData, setReceiptData] = useState(null);
     const [profiles, setProfiles] = useState([]);
     const [assignments, setAssignments] = useState({});
@@ -33,10 +37,18 @@ export default function AssignPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
 
     useEffect(() => {
-        const saved = localStorage.getItem('receiptData');
-        if (saved) setReceiptData(JSON.parse(saved));
-        else router.push('/');
-    }, []);
+        if (!id) return;
+        fetch(`/api/result/${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data || !data.items) {
+                    router.push('/');
+                } else {
+                    setReceiptData(data);
+                }
+            })
+            .catch(() => router.push('/'));
+    }, [id]);
 
     const addProfile = () => {
         if (!newProfileName.trim()) return;
@@ -228,16 +240,14 @@ export default function AssignPage() {
         }
     };
 
-    if (!receiptData) return null;
+    if (!receiptData) return <Loader message="Preparing your receipt." />;
 
     return (
         <div className="flex flex-col min-h-screen">
         <main className="min-h-screen flex-grow bg-white bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF] text-[#3A2C5A]">
             <div className="text-center shadow-sm bg-[#FFF8F0] p-6">
                 <div className="mb-4 flex items-center justify-center gap-2">
-                    <UtensilsCrossed className="w-7 h-7 mr-5 text-[#F5C24C]" />
                     <h1 className="text-3xl font-bold">Assign People to Items</h1>
-                    <UtensilsCrossed className="w-7 h-7 ml-5 text-[#F5C24C]" />
                 </div>
                 <p className="text-[#5A4B81] mb-2">
                     Restaurant: {receiptData.restaurant} | Date: {receiptData.date} | Tax: Rp{" "}
