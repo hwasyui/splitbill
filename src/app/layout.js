@@ -12,11 +12,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Split Bill Website",
-  description: "Split bills easily with friends. Created with love by github.com/hwasyui",
+  title: "Split Bill by Angelica's",
+  description: "Split bills easily with friends. Created with love by Angelica's",
   metadataBase: new URL("https://splitbill.angelicas.xyz"),
   openGraph: {
-    title: "Split Bill Website",
+    title: "Split Bill by Angelica's",
     description: "Split bills easily with friends. Try it free now!",
     url: "https://splitbill.angelicas.xyz",
     siteName: "Split Bill",

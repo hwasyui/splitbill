@@ -70,7 +70,7 @@ export default function HomePage() {
             transition={{ duration: 0.6 }}
             className="text-4xl md:text-6xl font-bold mb-4"
           >
-            Split the Bill, Effortlessly
+            Split Bill by Angelica's
           </motion.h1>
 
           <motion.p
