@@ -46,6 +46,7 @@ export default function RootLayout({ children }) {
       <head>
         <link rel="canonical" href="https://splitbill.angelicas.xyz/" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="google-site-verification" content="kRHhLJFUa4ChPorNRsbLNM6jVWx7VKET_upCs7bx0NM" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {children}
