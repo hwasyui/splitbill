@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Utensils, Download } from 'lucide-react';
 import Toast from '@/components/ui/Toast';
-
+import Loader from '@/components/ui/loader';
 export default function ResultPage() {
   const { id } = useParams();
   const [resultData, setResultData] = useState(null);
@@ -111,7 +111,7 @@ export default function ResultPage() {
 
 
 
-  if (!resultData) return <p className="p-10 text-center">Loading...</p>;
+  if (!resultData) return <Loader message="Preparing your split bill receipt." />;
 
   const totalItemCost = resultData.items.reduce(
     (sum, item) => sum + item.price * item.qty,

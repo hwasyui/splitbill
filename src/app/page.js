@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Camera, Trash } from "lucide-react";
 import { motion } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/ui/loader";
 
@@ -59,8 +59,8 @@ export default function HomePage() {
   };
 
   return (
-    <main className="bg-[#FFF8F0] text-[#3A2C5A] min-h-screen overflow-y-auto snap-y snap-mandatory">
-      {loading && <Loader message="AI Processing your receipts..." />}
+    <main className="bg-[#FFF8F0] text-[#3A2C5A] h-screen overflow-y-scroll snap-y snap-mandatory">
+      {loading && <Loader message="AI reading and preparing your receipts data. Please wait patiently." />}
 
       {/* Landing Section */}
       <section className="snap-start min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
@@ -77,9 +77,9 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-lg md:text-xl text-[#5A4B81] max-w-2xl mb-8"
+          className="text-lg md:text-xl text-[#5A4B81] mb-8"
         >
-          Upload or scan your receipt. Let AI do the splitting. Share instantly.
+          Upload or scan your receipt. Let AI reads your receipts. Split the bills. Share instantly.
         </motion.p>
 
         <motion.div
@@ -92,7 +92,7 @@ export default function HomePage() {
           </Button>
         </motion.div>
 
-        <ArrowDown className="mt-12 animate-bounce text-[#BCA1E2] w-8 h-8" />
+        <ArrowDown onClick={scrollToUpload} className="mt-12 animate-bounce text-[#BCA1E2] w-8 h-8" />
       </section>
 
       {/* Upload Section */}
@@ -145,22 +145,22 @@ export default function HomePage() {
           <div className="bg-[#F9F5FF] rounded-xl border border-[#E2D6F3] p-6">
             <h3 className="text-xl font-semibold mb-4 text-center">General Information</h3>
 
-            <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white ">
+            <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white">
               <label className="text-sm text-[#5A4B81]">Restaurant</label>
               <input
                 className="border rounded px-3 py-2 text-sm"
-                value={aiResult.restaurant}
+                value={aiResult.restaurant || ""}
                 onChange={(e) =>
                   setAiResult({ ...aiResult, restaurant: e.target.value })
                 }
               />
             </div>
 
-            <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white ">
+            <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white">
               <label className="text-sm text-[#5A4B81]">Date</label>
               <input
                 className="border rounded px-3 py-2 text-sm"
-                value={aiResult.date}
+                value={aiResult.date || ""}
                 onChange={(e) =>
                   setAiResult({ ...aiResult, date: e.target.value })
                 }
@@ -170,9 +170,9 @@ export default function HomePage() {
             <h3 className="text-xl font-semibold mb-4 text-center">Items</h3>
 
             <div className="space-y-4">
-              {aiResult.items.map((item) => (
+              {aiResult.items?.map((item, index) => (
                 <div
-                  key={item.name}
+                  key={index}
                   className="flex flex-col gap-2 border rounded-lg p-4 bg-white shadow-sm relative"
                 >
                   <div className="absolute top-3 right-3 text-red-500 cursor-pointer">
@@ -189,7 +189,7 @@ export default function HomePage() {
                     <label className="text-sm text-[#5A4B81]">Name</label>
                     <input
                       className="border rounded px-3 py-2 text-sm"
-                      value={item.name}
+                      value={item.name || ""}
                       onChange={(e) => {
                         const updatedItems = [...aiResult.items];
                         updatedItems[index].name = e.target.value;
@@ -231,12 +231,12 @@ export default function HomePage() {
             </div>
 
             <h3 className="text-xl font-semibold mb-4 text-center mt-6">Tax</h3>
-            <div className="flex flex-col border rounded-lg p-4 bg-white ">
+            <div className="flex flex-col border rounded-lg p-4 bg-white">
               <label className="text-sm text-[#5A4B81]">Tax Amount</label>
               <input
                 type="number"
                 className="border rounded px-3 py-2 text-sm"
-                value={aiResult.tax}
+                value={aiResult.tax || 0}
                 onChange={(e) =>
                   setAiResult({ ...aiResult, tax: parseInt(e.target.value) || 0 })
                 }
@@ -247,7 +247,7 @@ export default function HomePage() {
           <div className="text-center">
             <Button
               onClick={goToAssignPage}
-              className="mt-6 bg-[#F5C24C] text-[#3A2C5A] hover:bg-[#ecc043]"
+              className="mt-6 px-25 py-5 bg-[#F5C24C] text-[#3A2C5A] hover:bg-[#ecc043]"
             >
               Assign Split Bill →
             </Button>

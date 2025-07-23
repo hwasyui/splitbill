@@ -1,2 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+
+@keyframes scanLine {
+  0% {
+    top: 0%;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+.animate-scanLine {
+  animation: scanLine 1.5s linear infinite;
+}
