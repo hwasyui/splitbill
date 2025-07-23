@@ -31,9 +31,9 @@ export default function ResultPage() {
   };
 
   const generatePDF = async (data) => {
-  const html2pdf = (await import('html2pdf.js')).default;
-  // Manually because html2pdf doesn't support oklch colors yet
-  const html = `
+    const html2pdf = (await import('html2pdf.js')).default;
+    // Manually because html2pdf doesn't support oklch colors yet
+    const html = `
     <div style="max-width: 600px; margin: 0 auto; background: white; padding: 24px; font-family: monospace; color: #3A2C5A; border: 1px solid #E2D6F3; border-radius: 12px;">
       <h1 style="text-align:center; font-size: 24px; font-weight: bold; margin-bottom: 8px;">Receipt</h1>
       <p style="text-align:center; font-size: 12px; color: #5A4B81; margin-bottom: 4px;">${data.restaurant} | ${data.date}</p>
@@ -56,8 +56,8 @@ export default function ResultPage() {
       <div style="display:flex; justify-content:space-between; border-top: 1px dashed #999; font-weight: bold; padding-top: 8px; margin-top: 8px;">
         <span>Grand Total</span>
         <span>Rp ${(
-          data.items.reduce((sum, item) => sum + item.price * item.qty, 0) + data.tax
-        ).toLocaleString()}</span>
+        data.items.reduce((sum, item) => sum + item.price * item.qty, 0) + data.tax
+      ).toLocaleString()}</span>
       </div>
 
       <hr style="border-top: 1px dashed #ccc; margin: 16px 0;" />
@@ -92,22 +92,22 @@ export default function ResultPage() {
     </div>
   `;
 
-  const container = document.createElement('div');
-  container.innerHTML = html;
-  document.body.appendChild(container);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.appendChild(container);
 
-  const opt = {
-    margin: 0.5,
-    filename: 'receipt.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+    const opt = {
+      margin: 0.5,
+      filename: 'receipt.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
+    };
+
+    html2pdf().from(container).set(opt).save().then(() => {
+      document.body.removeChild(container);
+    });
   };
-
-  html2pdf().from(container).set(opt).save().then(() => {
-    document.body.removeChild(container);
-  });
-};
 
 
 
@@ -133,8 +133,6 @@ export default function ResultPage() {
         <p className="text-center text-xs mb-6 text-[#8B7BA2] italic">
           Split Type: {resultData.splitType === 'unit' ? 'Per Unit' : 'Flexible'}
         </p>
-
-        {/* Order Summary */}
         <div className="text-sm mb-4">
           <h2 className="font-semibold mb-2">Order Summary</h2>
           {resultData.items?.map((item, index) => (
@@ -153,8 +151,6 @@ export default function ResultPage() {
               </span>
             </div>
           ))}
-
-          {/* Tax and Total */}
           <div className="flex justify-between items-center mt-4 border-t border-dashed border-[#E2D6F3] pt-2">
             <span className="font-semibold">Tax</span>
             <span>Rp {resultData.tax.toLocaleString()}</span>
@@ -167,7 +163,6 @@ export default function ResultPage() {
 
         <div className="my-4 border-t border-dashed border-[#C3B6E0]" />
 
-        {/* Per Person Split */}
         {resultData.split.map((person, index) => (
           <motion.div
             key={index}
@@ -180,7 +175,6 @@ export default function ResultPage() {
               {person.name}
             </h2>
             <div className="text-sm space-y-1">
-              {/* Show items if per unit */}
               {resultData.splitType === 'unit' && person.items && (
                 <div className="text-xs text-[#5A4B81] mb-2">
                   {person.items.map((i, idx) => (
@@ -216,11 +210,11 @@ export default function ResultPage() {
           Share Link
         </Button>
         <Button
-  onClick={() => generatePDF(resultData)}
-  className="bg-[#DCCEF7] text-[#3A2C5A] hover:bg-[#cdb3ef]"
->
-  <Download className="w-4 h-4 mr-1" /> Download PDF
-</Button>
+          onClick={() => generatePDF(resultData)}
+          className="bg-[#DCCEF7] text-[#3A2C5A] hover:bg-[#cdb3ef]"
+        >
+          <Download className="w-4 h-4 mr-1" /> Download PDF
+        </Button>
 
       </div>
     </main>
