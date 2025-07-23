@@ -60,81 +60,83 @@ export default function HomePage() {
   };
 
   return (
-    <main className="bg-[#FFF8F0] text-[#3A2C5A] h-screen overflow-y-scroll snap-y snap-mandatory">
+    <main className="bg-[#FFF8F0] text-[#3A2C5A]">
       {loading && <Loader message="AI reading and preparing your receipts data. Please wait patiently." />}
-      <section className="snap-start min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-4xl md:text-6xl font-bold mb-4"
-        >
-          Split the Bill, Effortlessly
-        </motion.h1>
+      <div className="h-screen overflow-y-scroll snap-y snap-mandatory">
+        <section className="snap-start min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-4xl md:text-6xl font-bold mb-4"
+          >
+            Split the Bill, Effortlessly
+          </motion.h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-lg md:text-xl text-[#5A4B81] mb-8"
-        >
-          Upload or scan your receipt. Let AI reads your receipts. Split the bills. Share instantly.
-        </motion.p>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
+            className="text-lg md:text-xl text-[#5A4B81] mb-8"
+          >
+            Upload or scan your receipt. Let AI reads your receipts. Split the bills. Share instantly.
+          </motion.p>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4, duration: 0.4 }}
-        >
-          <Button onClick={scrollToUpload} size="lg" className="bg-[#F5C24C] hover:bg-[#ecc043] text-[#3A2C5A] text-lg px-6 py-4 rounded-full shadow-lg">
-            Get Started
-          </Button>
-        </motion.div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, duration: 0.4 }}
+          >
+            <Button onClick={scrollToUpload} size="lg" className="bg-[#F5C24C] hover:bg-[#ecc043] text-[#3A2C5A] text-lg px-6 py-4 rounded-full shadow-lg">
+              Get Started
+            </Button>
+          </motion.div>
 
-        <ArrowDown onClick={scrollToUpload} className="mt-12 animate-bounce text-[#BCA1E2] w-8 h-8" />
-      </section>
-      <section ref={uploadRef} className="snap-start min-h-screen flex flex-col justify-center items-center px-6 py-24 bg-white text-center">
-        <h2 className="text-3xl md:text-4xl font-semibold text-[#3A2C5A] mb-6">Upload or Scan Your Receipt</h2>
-        <p className="text-md md:text-lg text-[#5A4B81] mb-8 max-w-xl">
-          Drag and drop your receipt here, or use your camera.
-        </p>
+          <ArrowDown onClick={scrollToUpload} className="mt-12 animate-bounce text-[#BCA1E2] w-8 h-8" />
+        </section>
+        <section ref={uploadRef} className="snap-start min-h-screen flex flex-col justify-center items-center px-6 py-24 bg-white text-center">
+          <h2 className="text-3xl md:text-4xl font-semibold text-[#3A2C5A] mb-6">Upload or Scan Your Receipt</h2>
+          <p className="text-md md:text-lg text-[#5A4B81] mb-8 max-w-xl">
+            Drag and drop your receipt here, or use your camera.
+          </p>
 
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full max-w-md bg-[#F9F5FF] border-2 border-dashed border-[#BCA1E2] rounded-2xl p-8 cursor-pointer hover:bg-[#F5EDFF] transition-all"
-        >
-          <p className="text-[#5A4B81]">Click to upload from device</p>
-          {imagePreview && (
-            <img src={imagePreview} alt="Preview" className="mt-4 rounded-xl max-h-60 object-contain mx-auto" />
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-        </div>
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full max-w-md bg-[#F9F5FF] border-2 border-dashed border-[#BCA1E2] rounded-2xl p-8 cursor-pointer hover:bg-[#F5EDFF] transition-all"
+          >
+            <p className="text-[#5A4B81]">Click to upload from device</p>
+            {imagePreview && (
+              <img src={imagePreview} alt="Preview" className="mt-4 rounded-xl max-h-60 object-contain mx-auto" />
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+          </div>
 
-        <div className="mt-6">
-          <Button onClick={() => cameraInputRef.current?.click()} variant="outline" className="text-[#3A2C5A] border-[#BCA1E2] hover:bg-[#F5EDFF]">
-            <Camera className="mr-2 h-5 w-5" /> Use Camera
-          </Button>
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-        </div>
-      </section>
+          <div className="mt-6">
+            <Button onClick={() => cameraInputRef.current?.click()} variant="outline" className="text-[#3A2C5A] border-[#BCA1E2] hover:bg-[#F5EDFF]">
+              <Camera className="mr-2 h-5 w-5" /> Use Camera
+            </Button>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+          </div>
+        </section>
+      </div>
 
       {aiResult && (
         <section
           ref={aiReceiptRef}
-          className="snap-start w-full max-w-4xl mx-auto px-4 py-10"
+          className="w-full max-w-4xl mx-auto px-4 py-10"
         >
           <h1 className="text-3xl font-bold mb-6 text-center">Receipt Info</h1>
 
@@ -211,12 +213,13 @@ export default function HomePage() {
                     <div className="flex-1 flex flex-col">
                       <label className="text-sm text-[#5A4B81]">Price</label>
                       <input
-                        type="number"
+                        type="text"
                         className="border rounded px-3 py-2 text-sm"
-                        value={item.price}
+                        value={item.price?.toLocaleString('en-US') || ""}
                         onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, "");
                           const updatedItems = [...aiResult.items];
-                          updatedItems[index].price = parseInt(e.target.value) || 0;
+                          updatedItems[index].price = parseInt(rawValue) || 0;
                           setAiResult({ ...aiResult, items: updatedItems });
                         }}
                       />
@@ -230,9 +233,9 @@ export default function HomePage() {
             <div className="flex flex-col border rounded-lg p-4 bg-white">
               <label className="text-sm text-[#5A4B81]">Tax Amount</label>
               <input
-                type="number"
+                type="text"
                 className="border rounded px-3 py-2 text-sm"
-                value={aiResult.tax || 0}
+                value={aiResult.tax?.toLocaleString('en-US') || ""}
                 onChange={(e) =>
                   setAiResult({ ...aiResult, tax: parseInt(e.target.value) || 0 })
                 }
@@ -250,7 +253,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
-      <Footer/>
+      <Footer />
     </main>
   );
 }

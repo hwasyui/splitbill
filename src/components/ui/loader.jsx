@@ -25,7 +25,7 @@ const Loader = ({ message = "Preparing Files", size = 100 }) => {
                     speed={50}
                     repeat={Infinity}
                     wrapper="span"
-                    className="text-lg sm:text-xl font-medium"
+                    className="text-lg px-5 sm:text-xl font-medium"
                 />
             </div>
         </div>

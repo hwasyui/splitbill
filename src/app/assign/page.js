@@ -349,31 +349,31 @@ export default function AssignPage() {
                                                         color: isAssigned ? "#fff" : "#3A2C5A",
                                                     }}
                                                 >
-                                                    <User className="w-5 h-5" />
+                                                    <User className="w-3 h-3" />
                                                     <span className="text-[10px] font-medium">
                                                         {p.name.length > 4 ? `${p.name.slice(0, 4)}..` : p.name}
                                                     </span>
                                                     {splitType === "unit" && qty > 0 && (
-                                                        <span className="text-xs font-bold">{qty}x</span>
+                                                        <span className="text-[10px] font-semibold">{qty}x</span>
                                                     )}
                                                 </div>
                                                 {splitType === "unit" && (
-                                                    <div className="flex">
+                                                    <div className="flex gap-0">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="hover:cursor-pointer"
+                                                            className="hover:cursor-pointer  w-5 h-5 space-x-0 p-0 m-0 gap-0"
                                                             onClick={() => decrementQty(index, p.id)}
                                                         >
-                                                            <Minus className="w-3 h-3 text-red-500" strokeWidth={3} />
+                                                            <Minus className="w-1 h-1 text-red-500 space-x-0" strokeWidth={4} />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="hover:cursor-pointer"
+                                                            className="hover:cursor-pointer  w-5 h-5 space-x-0 p-0 m-0 gap-0"
                                                             onClick={() => incrementQty(index, p.id)}
                                                         >
-                                                            <Plus className="w-3 h-3 text-yellow-500" strokeWidth={3} />
+                                                            <Plus className="w-1 h-1 text-yellow-500 space-x-0" strokeWidth={4} />
                                                         </Button>
                                                     </div>
                                                 )}
@@ -390,7 +390,7 @@ export default function AssignPage() {
                     <Button
                         onClick={calculateSplit}
                         size="lg"
-                        className="bg-[#F5C24C] hover:bg-[#ecc043] text-[#3A2C5A] text-lg px-10 py-5 rounded-full shadow-lg"
+                        className="bg-[#F5C24C] hover:bg-[#ecc043] text-[#3A2C5A] text-lg px-10 md:px-50 py-5 rounded-full shadow-lg"
                     >
                         Finish
                     </Button>
