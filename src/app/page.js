@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/ui/loader";
+import Footer from "@/components/ui/footer";
 
 export default function HomePage() {
   const uploadRef = useRef(null);
@@ -249,6 +250,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
+      <Footer/>
     </main>
   );
 }

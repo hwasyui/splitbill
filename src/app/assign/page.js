@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import Footer from '@/components/ui/footer';
 import {
     Select,
     SelectContent,
@@ -230,7 +231,8 @@ export default function AssignPage() {
     if (!receiptData) return null;
 
     return (
-        <main className="min-h-screen bg-white bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF] text-[#3A2C5A]">
+        <div className="flex flex-col min-h-screen">
+        <main className="min-h-screen flex-grow bg-white bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF] text-[#3A2C5A]">
             <div className="text-center shadow-sm bg-[#FFF8F0] p-6">
                 <div className="mb-4 flex items-center justify-center gap-2">
                     <UtensilsCrossed className="w-7 h-7 mr-5 text-[#F5C24C]" />
@@ -395,5 +397,7 @@ export default function AssignPage() {
                 </div>
             </section>
         </main>
+        <Footer/>
+        </div>
     );
 }

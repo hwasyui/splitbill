@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Utensils, Download } from 'lucide-react';
 import Toast from '@/components/ui/Toast';
 import Loader from '@/components/ui/loader';
+import Footer from '@/components/ui/footer';
 export default function ResultPage() {
   const { id } = useParams();
   const [resultData, setResultData] = useState(null);
@@ -120,7 +121,8 @@ export default function ResultPage() {
   const grandTotal = totalItemCost + resultData.tax;
 
   return (
-    <main className="min-h-screen bg-[#FFF8F0] text-[#3A2C5A] p-4 sm:p-6 font-mono relative">
+    <div className="flex flex-col min-h-screen bg-[#FFF8F0] text-[#3A2C5A] font-mono">
+    <main className="min-h-screen flex-grow bg-[#FFF8F0] text-[#3A2C5A] p-4 sm:p-6 font-mono relative">
       {showToast && (
         <Toast message="Link copied to clipboard!" onClose={() => setShowToast(false)} />
       )}
@@ -218,5 +220,7 @@ export default function ResultPage() {
 
       </div>
     </main>
+    <Footer/>
+    </div>
   );
 }
