@@ -62,7 +62,7 @@ export default function HomePage() {
   return (
     <main className="bg-[#FFF8F0] text-[#3A2C5A]">
       {loading && <Loader message="AI reading and preparing your receipts data. Please wait patiently." />}
-      <div className="h-screen overflow-y-scroll snap-y snap-mandatory">
+      <div className="snap-y snap-mandatory">
         <section className="snap-start min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
@@ -253,7 +253,7 @@ export default function HomePage() {
           </div>
         </section>
       )}
-      <Footer />
+<Footer />
     </main>
   );
 }
