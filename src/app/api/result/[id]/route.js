@@ -1,9 +1,9 @@
-
 import { MongoClient, ObjectId } from 'mongodb';
 
-export async function GET(req, { params }) {
-  const { id } = params;
-
+export async function GET(req, context) {
+  const params = await context.params; 
+  const { id } = params; 
+  
   const client = new MongoClient(process.env.MONGO_URI);
   await client.connect();
 

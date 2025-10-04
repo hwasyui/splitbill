@@ -55,6 +55,7 @@ export default function HomePage() {
   };
 
   const goToAssignPage = async () => {
+    setLoading(true); // Show loader immediately
     try {
       const response = await fetch("/api/save-result", {
         method: "POST",
@@ -66,11 +67,16 @@ export default function HomePage() {
 
       const resJson = await response.json();
       if (resJson.success) {
-        router.push(`/assign/${resJson.id}`);
+        // Optionally add a short delay for UX
+        setTimeout(() => {
+          router.push(`/assign/${resJson.id}`);
+        }, 1200); // 1.2 seconds
       } else {
+        setLoading(false);
         alert("Failed to save receipt to database.");
       }
     } catch (err) {
+      setLoading(false);
       console.error("Error saving to MongoDB:", err);
       alert("Error saving receipt.");
     }
@@ -78,7 +84,11 @@ export default function HomePage() {
 
   return (
     <main className="bg-[#FFF8F0] text-[#3A2C5A]">
-      {loading && <Loader message="AI reading and preparing your receipts data. Please wait patiently." />}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80">
+          <Loader message="Preparing split bill page. Please wait..." />
+        </div>
+      )}
       <section className="min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
