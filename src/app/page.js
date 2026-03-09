@@ -67,10 +67,9 @@ export default function HomePage() {
 
       const resJson = await response.json();
       if (resJson.success) {
-        // Optionally add a short delay for UX
         setTimeout(() => {
           router.push(`/assign/${resJson.id}`);
-        }, 1200); // 1.2 seconds
+        }, 1200); 
       } else {
         setLoading(false);
         alert("Failed to save receipt to database.");
