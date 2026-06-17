@@ -1,5 +1,3 @@
-// src/app/api/process-receipt/route.js
-
 import { NextResponse } from "next/server";
 
 const API_KEY = process.env.GEMINI_API_KEY;

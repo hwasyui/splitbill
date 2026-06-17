@@ -2,425 +2,581 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Plus, User, Minus, UtensilsCrossed } from 'lucide-react';
+import { Plus, Minus, User, Check, Receipt, ChevronRight, AlertCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import StepBar from '@/components/ui/StepBar';
 import Loader from '@/components/ui/loader';
+import Toast from '@/components/ui/Toast';
 import Footer from '@/components/ui/footer';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from '@/components/ui/select';
+import { formatAmount } from '@/lib/currency';
 
-const generateRandomColor = () => {
-    const colors = ['#F5C24C', '#FF6B6B', '#6BCB77', '#4D96FF', '#F9A826', '#8E7AB5', '#FF9F1C'];
-    return colors[Math.floor(Math.random() * colors.length)];
-};
+const PROFILE_COLORS = ['#E84C3D', '#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#3B6F4A', '#44569C'];
+const randomColor    = () => PROFILE_COLORS[Math.floor(Math.random() * PROFILE_COLORS.length)];
 
 export default function AssignPage() {
-    const router = useRouter();
-    const params = useParams();
-    const { id } = params;
+  const router = useRouter();
+  const { id } = useParams();
 
-    const [receiptData, setReceiptData] = useState(null);
-    const [profiles, setProfiles] = useState([]);
-    const [assignments, setAssignments] = useState({});
-    const [unitAssignments, setUnitAssignments] = useState({});
-    const [splitType, setSplitType] = useState('flexible');
-    const [newProfileName, setNewProfileName] = useState('');
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [loading, setLoading] = useState(false); // Add loading state
+  const [receiptData,     setReceiptData]     = useState(null);
+  const [profiles,        setProfiles]        = useState([]);
+  const [itemMethods,     setItemMethods]     = useState({});   // idx → 'equal'|'unit'|'solo'|'perunit'
+  const [assignments,     setAssignments]     = useState({});   // idx → [profileId,...]        (equal)
+  const [unitAssignments, setUnitAssignments] = useState({});   // idx → { profileId: qty }      (unit)
+  const [soloAssignments, setSoloAssignments] = useState({});   // idx → profileId               (solo)
+  const [perUnitSlots,    setPerUnitSlots]    = useState({});   // idx → { unitIdx: [profileId,...] } (perunit)
+  const [newName,         setNewName]         = useState('');
+  const [dialogOpen,      setDialogOpen]      = useState(false);
+  const [loading,         setLoading]         = useState(false);
+  const [toastMsg,        setToastMsg]        = useState(null);
 
-    useEffect(() => {
-        if (!id) return;
-        fetch(`/api/result/${id}`)
-            .then(res => res.json())
-            .then(data => {
-                if (!data || !data.items) {
-                    router.push('/');
-                } else {
-                    setReceiptData(data);
-                }
-            })
-            .catch(() => router.push('/'));
-    }, [id]);
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/result/${id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data?.items || data?.error) { router.push('/bill-expired'); return; }
+        setReceiptData(data);
+      })
+      .catch(() => router.push('/bill-expired'));
+  }, [id, router]);
 
-    const addProfile = () => {
-        if (!newProfileName.trim()) return;
-        const newProfile = {
-            id: uuidv4(),
-            name: newProfileName.trim(),
-            color: generateRandomColor(),
-        };
-        setProfiles([...profiles, newProfile]);
-        setNewProfileName('');
-        setDialogOpen(false);
+  const addProfile = () => {
+    if (!newName.trim()) return;
+    setProfiles(p => [...p, { id: uuidv4(), name: newName.trim(), color: randomColor() }]);
+    setNewName('');
+    setDialogOpen(false);
+  };
+
+  const setItemMethod = (idx, method) => {
+    setItemMethods(prev     => ({ ...prev, [idx]: method }));
+    setAssignments(prev     => { const n = { ...prev }; delete n[idx]; return n; });
+    setUnitAssignments(prev => { const n = { ...prev }; delete n[idx]; return n; });
+    setSoloAssignments(prev => { const n = { ...prev }; delete n[idx]; return n; });
+    setPerUnitSlots(prev    => { const n = { ...prev }; delete n[idx]; return n; });
+  };
+
+  const toggleEqual = (itemIdx, profileId) => {
+    const cur = assignments[itemIdx] || [];
+    setAssignments({
+      ...assignments,
+      [itemIdx]: cur.includes(profileId) ? cur.filter(x => x !== profileId) : [...cur, profileId],
+    });
+  };
+
+  const changeUnit = (itemIdx, profileId, delta) => {
+    const cur   = unitAssignments[itemIdx] || {};
+    const item  = receiptData.items[itemIdx];
+    const next  = Math.max(0, (cur[profileId] || 0) + delta);
+    const total = Object.values({ ...cur, [profileId]: next }).reduce((a, b) => a + b, 0);
+    if (total > item.qty) return;
+    setUnitAssignments({ ...unitAssignments, [itemIdx]: { ...cur, [profileId]: next } });
+  };
+
+  const setSolo = (itemIdx, profileId) => {
+    setSoloAssignments(prev => ({
+      ...prev,
+      [itemIdx]: prev[itemIdx] === profileId ? null : profileId,
+    }));
+  };
+
+  const togglePerUnit = (itemIdx, unitIdx, profileId) => {
+    setPerUnitSlots(prev => {
+      const itemSlots = { ...(prev[itemIdx] || {}) };
+      const cur       = itemSlots[unitIdx] || [];
+      itemSlots[unitIdx] = cur.includes(profileId)
+        ? cur.filter(id => id !== profileId)
+        : [...cur, profileId];
+      return { ...prev, [itemIdx]: itemSlots };
+    });
+  };
+
+  const isItemComplete = (idx) => {
+    const method = itemMethods[idx] || 'equal';
+    const item   = receiptData?.items?.[idx];
+    if (method === 'solo')    return !!soloAssignments[idx];
+    if (method === 'unit')    return Object.values(unitAssignments[idx] || {}).reduce((a, b) => a + b, 0) > 0;
+    if (method === 'perunit') {
+      if (!item) return false;
+      const slots = perUnitSlots[idx] || {};
+      for (let u = 0; u < item.qty; u++) {
+        if (!slots[u]?.length) return false;
+      }
+      return true;
+    }
+    return (assignments[idx] || []).length > 0;
+  };
+
+  const perUnitProgress = (idx) => {
+    const item  = receiptData?.items?.[idx];
+    if (!item) return { assigned: 0, total: 0 };
+    const slots    = perUnitSlots[idx] || {};
+    const assigned = Array.from({ length: item.qty }, (_, u) => u)
+      .filter(u => (slots[u] || []).length > 0).length;
+    return { assigned, total: item.qty };
+  };
+
+  const assignedCount = receiptData?.items?.filter((_, i) => isItemComplete(i)).length || 0;
+  const totalItems    = receiptData?.items?.length || 0;
+  const progress      = totalItems > 0 ? (assignedCount / totalItems) * 100 : 0;
+
+  const calculateSplit = async () => {
+    setLoading(true);
+    let tempProfiles = [...profiles];
+    const subtotals  = {};
+    const items      = receiptData.items || [];
+    const tax        = receiptData.tax || 0;
+    const currency   = receiptData.currency || 'IDR';
+
+    tempProfiles.forEach(p => {
+      subtotals[p.id] = { id: p.id, name: p.name, subtotal: 0, items: [] };
+    });
+
+    const ensureUnassigned = () => {
+      if (!subtotals['unassigned']) {
+        tempProfiles = [...tempProfiles, { id: 'unassigned', name: 'Unassigned', color: '#DDD0FF' }];
+        subtotals['unassigned'] = { id: 'unassigned', name: 'Unassigned', subtotal: 0, items: [] };
+      }
     };
 
-    const incrementQty = (itemIndex, profileId) => {
-        const current = unitAssignments[itemIndex] || {};
-        const item = receiptData.items[itemIndex];
-        const newCount = (current[profileId] || 0) + 1;
-        const totalAssigned = Object.values(current).reduce((a, b) => a + b, 0);
+    items.forEach((item, idx) => {
+      const method = itemMethods[idx] || 'equal';
+      const total  = item.qty * item.price;
 
-        if (newCount + totalAssigned - (current[profileId] || 0) <= item.qty) {
-            setUnitAssignments({
-                ...unitAssignments,
-                [itemIndex]: {
-                    ...current,
-                    [profileId]: newCount,
-                },
-            });
-        }
-    };
-
-    const decrementQty = (itemIndex, profileId) => {
-        const current = unitAssignments[itemIndex] || {};
-        const newCount = (current[profileId] || 0) - 1;
-        if (newCount >= 0) {
-            setUnitAssignments({
-                ...unitAssignments,
-                [itemIndex]: {
-                    ...current,
-                    [profileId]: newCount,
-                },
-            });
-        }
-    };
-
-    const toggleAssignment = (itemIndex, profileId) => {
-        if (splitType === 'unit') return;
-        const current = assignments[itemIndex] || [];
-        if (current.includes(profileId)) {
-            setAssignments({
-                ...assignments,
-                [itemIndex]: current.filter(id => id !== profileId),
-            });
+      if (method === 'solo') {
+        const soloId = soloAssignments[idx];
+        if (soloId && subtotals[soloId]) {
+          subtotals[soloId].subtotal += total;
+          subtotals[soloId].items.push({ name: item.name, qty: item.qty, price: item.price, total });
         } else {
-            setAssignments({
-                ...assignments,
-                [itemIndex]: [...current, profileId],
-            });
+          ensureUnassigned();
+          subtotals['unassigned'].subtotal += total;
+          subtotals['unassigned'].items.push({ name: item.name, qty: item.qty, price: item.price, total });
         }
-    };
 
-    const calculateSplit = async () => {
-        setLoading(true);
-        let tempProfiles = [...profiles];
-        const subtotalPerPerson = {};
-        const items = receiptData.items || [];
-        const tax = receiptData.tax || 0;
-
-        tempProfiles.forEach(p => {
-            subtotalPerPerson[p.id] = {
-                id: p.id,
-                name: p.name,
-                subtotal: 0,
-                items: [],
-            };
+      } else if (method === 'unit') {
+        const unitMap = unitAssignments[idx] || {};
+        let assignedQty = 0;
+        Object.entries(unitMap).forEach(([pid, qty]) => {
+          if (!subtotals[pid] || qty === 0) return;
+          assignedQty += qty;
+          const sub = qty * item.price;
+          subtotals[pid].subtotal += sub;
+          subtotals[pid].items.push({ name: item.name, qty, price: item.price, total: sub });
         });
+        const leftover = item.qty - assignedQty;
+        if (leftover > 0) {
+          ensureUnassigned();
+          const sub = leftover * item.price;
+          subtotals['unassigned'].subtotal += sub;
+          subtotals['unassigned'].items.push({ name: item.name, qty: leftover, price: item.price, total: sub });
+        }
 
-        if (splitType === 'unit') {
-            items.forEach((item, index) => {
-                const assigned = unitAssignments[index] || {};
-                let totalAssignedQty = 0;
-
-                for (const profileId in assigned) {
-                    const qty = assigned[profileId];
-                    totalAssignedQty += qty;
-
-                    if (!subtotalPerPerson[profileId]) continue;
-
-                    const subtotal = qty * item.price;
-                    subtotalPerPerson[profileId].subtotal += subtotal;
-                    subtotalPerPerson[profileId].items.push({
-                        name: item.name,
-                        qty,
-                        price: item.price,
-                        total: subtotal,
-                    });
-                }
-
-                const unassignedQty = item.qty - totalAssignedQty;
-                if (unassignedQty > 0) {
-                    const unassignedId = 'unassigned';
-                    if (!subtotalPerPerson[unassignedId]) {
-                        tempProfiles.push({
-                            id: unassignedId,
-                            name: 'Unassigned Subtotals',
-                            color: '#CCCCCC',
-                        });
-                        subtotalPerPerson[unassignedId] = {
-                            id: unassignedId,
-                            name: 'Unassigned Subtotals',
-                            subtotal: 0,
-                            items: [],
-                        };
-                    }
-                    const subtotal = unassignedQty * item.price;
-                    subtotalPerPerson[unassignedId].subtotal += subtotal;
-                    subtotalPerPerson[unassignedId].items.push({
-                        name: item.name,
-                        qty: unassignedQty,
-                        price: item.price,
-                        total: subtotal,
-                    });
-                }
+      } else if (method === 'perunit') {
+        const slots = perUnitSlots[idx] || {};
+        for (let u = 0; u < item.qty; u++) {
+          const participants = slots[u] || [];
+          if (participants.length > 0) {
+            const share = item.price / participants.length;
+            const label = participants.length > 1
+              ? `${item.name} (unit ${u + 1} ÷ ${participants.length})`
+              : `${item.name} (unit ${u + 1})`;
+            participants.forEach(pid => {
+              if (!subtotals[pid]) return;
+              subtotals[pid].subtotal += share;
+              subtotals[pid].items.push({ name: label, qty: 1, price: item.price, total: share });
             });
+          } else {
+            ensureUnassigned();
+            subtotals['unassigned'].subtotal += item.price;
+            subtotals['unassigned'].items.push({
+              name:  `${item.name} (unit ${u + 1})`,
+              qty:   1,
+              price: item.price,
+              total: item.price,
+            });
+          }
+        }
+
+      } else {
+        // equal (default)
+        const selected = assignments[idx] || [];
+        if (selected.length > 0) {
+          const share = total / selected.length;
+          selected.forEach(pid => { if (subtotals[pid]) subtotals[pid].subtotal += share; });
         } else {
-            items.forEach((item, index) => {
-                const totalItemCost = item.qty * item.price;
-                const assignedProfiles = assignments[index] || [];
-
-                if (assignedProfiles.length > 0) {
-                    const perPersonShare = totalItemCost / assignedProfiles.length;
-                    assignedProfiles.forEach(profileId => {
-                        subtotalPerPerson[profileId].subtotal += perPersonShare;
-                    });
-                } else {
-                    const unassignedId = 'unassigned';
-                    if (!subtotalPerPerson[unassignedId]) {
-                        tempProfiles.push({
-                            id: unassignedId,
-                            name: 'Unassigned Subtotals',
-                            color: generateRandomColor()
-                        });
-                        subtotalPerPerson[unassignedId] = {
-                            id: unassignedId,
-                            name: 'Unassigned Subtotals',
-                            subtotal: 0,
-                            items: [],
-                        };
-                    }
-                    subtotalPerPerson[unassignedId].subtotal += totalItemCost;
-                }
-            });
+          ensureUnassigned();
+          subtotals['unassigned'].subtotal += total;
         }
+      }
+    });
 
-        const allProfiles = tempProfiles;
-        const perPersonTax = allProfiles.length > 0 ? tax / allProfiles.length : 0;
+    const perTax     = tempProfiles.length > 0 ? tax / tempProfiles.length : 0;
+    const finalSplit = Object.values(subtotals)
+      .map(p => ({
+        id:       p.id,
+        name:     p.name,
+        subtotal: Math.round(p.subtotal * 100) / 100,
+        tax:      Math.round(perTax * 100) / 100,
+        total:    Math.round((p.subtotal + perTax) * 100) / 100,
+        items:    p.items.length > 0 ? p.items : undefined,
+      }))
+      .filter(p => p.total > 0);
 
-        const finalSplit = Object.values(subtotalPerPerson).map(p => {
-            return {
-                id: p.id,
-                name: p.name,
-                subtotal: Math.round(p.subtotal),
-                tax: Math.round(perPersonTax),
-                total: Math.round(p.subtotal + perPersonTax),
-                ...(splitType === 'unit' && p.id !== 'unassigned' ? { items: p.items } : {}),
-            };
-        });
-
-        const payload = {
-            splitType,
-            restaurant: receiptData.restaurant,
-            date: receiptData.date,
-            items,
-            tax: Math.round(tax),
-            split: finalSplit,
-        };
-
-        try {
-            const res = await fetch('/api/save-result', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            const data = await res.json();
-            if (data.success && data.id) {
-                setTimeout(() => {
-                    router.push(`/result/${data.id}`);
-                }, 1200); // Optional delay for UX
-            } else {
-                setLoading(false);
-                alert('Failed to save result');
-            }
-        } catch (err) {
-            setLoading(false);
-            alert('Failed to save result');
-        }
+    const payload = {
+      currency,
+      restaurant: receiptData.restaurant,
+      date:       receiptData.date,
+      items,
+      tax:        Math.round(tax * 100) / 100,
+      split:      finalSplit,
     };
 
-    if (!receiptData) return <Loader message="Preparing your receipt." />;
+    try {
+      const res  = await fetch('/api/save-result', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success && data.id) {
+        setTimeout(() => router.push(`/result/${data.id}`), 1200);
+      } else {
+        setLoading(false);
+        setToastMsg('Failed to save result. Please try again.');
+      }
+    } catch {
+      setLoading(false);
+      setToastMsg('Failed to save result. Please try again.');
+    }
+  };
 
-    return (
-        <div className="flex flex-col min-h-screen">
-            {loading && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80">
-                    <Loader message="Preparing split bill result. Please wait..." />
-                </div>
-            )}
-            <main className="min-h-screen flex-grow bg-white bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF] text-[#3A2C5A]">
-                <div className="text-center shadow-sm bg-[#FFF8F0] p-6">
-                    <div className="mb-4 flex items-center justify-center gap-2">
-                        <h1 className="text-3xl font-bold">Assign People to Items</h1>
-                    </div>
-                    <p className="text-[#5A4B81] mb-2">
-                        Restaurant: {receiptData.restaurant} | Date: {receiptData.date} | Tax: Rp{" "}
-                        {Number(receiptData.tax || 0).toLocaleString()}
-                    </p>
-                </div>
-                <section className="p-4 sm:p-6 max-w-3xl mx-auto w-full">
-                    <div className="mb-4 mt-5 flex flex-col sm:flex-row sm:items-center">
-                        <label className="text-xl font-semibold mr-4">Split Type:</label>
-                        <Select value={splitType} onValueChange={setSplitType}>
-                            <SelectTrigger className="w-full sm:w-[260px] border-dashed border-[#BCA1E2] font-semibold text-[#3A2C5A] focus:ring-[#BCA1E2]">
-                                <SelectValue placeholder="Select split type" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white">
-                                <SelectItem value="flexible">Flexible (Shared Price)</SelectItem>
-                                <SelectItem value="unit">Unit (Assign Qty)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+  if (!receiptData) return <Loader message="Loading receipt data..." />;
+  if (loading)      return <Loader message="Calculating split..." />;
 
-                    <div className="mb-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center">
-                            <h2 className="text-xl font-semibold mr-4 mb-2">Profiles:</h2>
-                            <div className="flex gap-2 flex-wrap">
-                                {profiles.map((p) => (
-                                    <div
-                                        key={p.id}
-                                        className="px-4 py-2 rounded-full text-white text-sm flex items-center gap-2"
-                                        style={{ backgroundColor: p.color }}
-                                    >
-                                        <User className="w-4 h-4" /> {p.name}
-                                    </div>
-                                ))}
-                                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button variant="outline" className="border-dashed border-[#BCA1E2] text-[#3A2C5A]">
-                                            <Plus className="w-4 h-4 mr-1" /> Add Person
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent
-                                        className="sm:max-w-[400px] rounded-2xl border-none shadow-lg"
-                                        style={{
-                                            background: "linear-gradient(135deg, #FDF6EC, #E6D4F5)",
-                                            color: "#3A2C5A",
-                                        }}
-                                    >
-                                        <DialogTitle className="text-lg font-bold text-center">Add a Person</DialogTitle>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="name" className="text-md text-[#3A2C5A]">
-                                                Enter name
-                                            </Label>
-                                            <Input
-                                                id="name"
-                                                value={newProfileName}
-                                                onChange={(e) => setNewProfileName(e.target.value)}
-                                                placeholder="e.g., Alice"
-                                                className="bg-white border border-[#DCCEF7] focus:ring-[#BCA1E2]"
-                                            />
-                                            <Button
-                                                className="mt-2 bg-[#F5C24C] hover:bg-[#eabf4a] text-[#3A2C5A] font-semibold"
-                                                onClick={addProfile}
-                                            >
-                                                Add Profile
-                                            </Button>
-                                        </div>
-                                    </DialogContent>
-                                </Dialog>
-                            </div>
-                        </div>
-                    </div>
+  const currency = receiptData.currency || 'IDR';
+  const fmt      = (n) => formatAmount(n, currency);
 
-                    <div className="space-y-4">
-                        {receiptData.items?.map((item, index) => {
-                            const totalAssignedQty = Object.values(unitAssignments[index] || {}).reduce(
-                                (a, b) => a + b,
-                                0
-                            );
-                            return (
-                                <div
-                                    key={index}
-                                    className="w-full border p-4 rounded-xl bg-[#FFF8F0] shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between"
-                                >
-                                    <div className="mb-2 sm:mb-0">
-                                        <h3 className="font-semibold text-lg">{item.name}</h3>
-                                        <p className="text-sm text-[#5A4B81]">
-                                            Qty: {item.qty} × Rp{item.price.toLocaleString()}
-                                            {splitType === "unit" && (
-                                                <span className="ml-2 text-red-600">
-                                                    ({totalAssignedQty}/{item.qty} assigned)
-                                                </span>
-                                            )}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-3 flex-wrap justify-start sm:justify-end">
-                                        {profiles.map((p) => {
-                                            const isAssigned =
-                                                splitType === "unit"
-                                                    ? (unitAssignments[index]?.[p.id] || 0) > 0
-                                                    : (assignments[index] || []).includes(p.id);
-                                            const qty = unitAssignments[index]?.[p.id] || 0;
-                                            return (
-                                                <div key={p.id} className="flex flex-col items-center">
-                                                    <div
-                                                        onClick={() => toggleAssignment(index, p.id)}
-                                                        className={`cursor-pointer w-11 h-11 rounded-full flex flex-col items-center justify-center text-xs font-medium shadow transition-transform duration-200 ${isAssigned ? "ring-1 ring-offset-2 ring-white" : "opacity-80"
-                                                            }`}
-                                                        style={{
-                                                            backgroundColor: isAssigned ? p.color : "#F3EFFF",
-                                                            color: isAssigned ? "#fff" : "#3A2C5A",
-                                                        }}
-                                                    >
-                                                        <User className="w-3 h-3" />
-                                                        <span className="text-[10px] font-medium">
-                                                            {p.name.length > 4 ? `${p.name.slice(0, 4)}..` : p.name}
-                                                        </span>
-                                                        {splitType === "unit" && qty > 0 && (
-                                                            <span className="text-[10px] font-semibold">{qty}x</span>
-                                                        )}
-                                                    </div>
-                                                    {splitType === "unit" && (
-                                                        <div className="flex gap-0">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="hover:cursor-pointer  w-5 h-5 space-x-0 p-0 m-0 gap-0"
-                                                                onClick={() => decrementQty(index, p.id)}
-                                                            >
-                                                                <Minus className="w-1 h-1 text-red-500 space-x-0" strokeWidth={4} />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="hover:cursor-pointer  w-5 h-5 space-x-0 p-0 m-0 gap-0"
-                                                                onClick={() => incrementQty(index, p.id)}
-                                                            >
-                                                                <Plus className="w-1 h-1 text-yellow-500 space-x-0" strokeWidth={4} />
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+  return (
+    <div className="min-h-screen flex flex-col bg-[#FFFDE7] text-[#2D1B69]">
+      {toastMsg && <Toast message={toastMsg} type="error" onClose={() => setToastMsg(null)} />}
 
-                    <div className="mt-10 text-center">
-                        <Button
-                            onClick={calculateSplit}
-                            size="lg"
-                            className="bg-[#F5C24C] hover:bg-[#ecc043] text-[#3A2C5A] text-lg px-10 md:px-50 py-5 rounded-full shadow-lg"
-                        >
-                            Finish
-                        </Button>
-                    </div>
-                </section>
-            </main>
-            <Footer/>
+      {/* Header */}
+      <header className="bg-[#2D1B69] text-[#FFFDE7] border-b border-[#1E1245] sticky top-0 z-40">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Receipt className="w-4 h-4 text-[#F5C24C]" />
+            <span className="text-sm uppercase tracking-[0.25em] font-bold">Angelica's Split Bill</span>
+          </div>
+          <span className="text-[10px] text-[#8B72BE] tracking-[0.2em] uppercase hidden sm:block">by Angelica</span>
         </div>
-    );
+      </header>
+
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
+        <StepBar current={3} />
+
+        {/* Section header */}
+        <div className="mb-5">
+          <p className="text-[10px] uppercase tracking-[0.45em] text-[#7C3AED] mb-1.5">Step 03 of 04</p>
+          <h1 className="text-3xl font-bold uppercase tracking-tight leading-none">Assign Party</h1>
+          <p className="text-sm text-[#5B3F8C] mt-2">
+            {receiptData.restaurant} &middot; {receiptData.date}
+          </p>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mb-6 border border-[#DDD0FF] bg-[#FEFCE8] p-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[10px] uppercase tracking-widest text-[#8B72BE]">Items Assigned</span>
+            <span className="text-xs font-bold tabular-nums">
+              <span className="text-[#7C3AED]">{assignedCount}</span>
+              <span className="text-[#8B72BE]"> / {totalItems}</span>
+            </span>
+          </div>
+          <div className="h-1.5 bg-[#EDE9FE] w-full">
+            <motion.div
+              className="h-full bg-[#7C3AED]"
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.4 }}
+            />
+          </div>
+          {assignedCount === totalItems && totalItems > 0 && (
+            <p className="text-[10px] text-[#7C3AED] uppercase tracking-widest mt-2 flex items-center gap-1">
+              <Check className="w-3 h-3" /> All items assigned
+            </p>
+          )}
+        </div>
+
+        {/* Party roster */}
+        <div className="mb-6">
+          <p className="text-[10px] uppercase tracking-[0.35em] text-[#8B72BE] mb-3">Party Roster</p>
+          <div className="flex flex-wrap gap-2 items-center">
+            {profiles.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-2 px-3 py-1.5 border text-xs font-bold uppercase tracking-wider"
+                style={{ borderColor: p.color, color: p.color, backgroundColor: `${p.color}18` }}
+              >
+                <User className="w-3 h-3" />
+                {p.name}
+              </div>
+            ))}
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 px-3 py-1.5 border-2 border-dashed border-[#DDD0FF]
+                  text-xs uppercase tracking-widest text-[#8B72BE] hover:border-[#7C3AED] hover:text-[#7C3AED] transition-colors">
+                  <Plus className="w-3 h-3" /> Add Member
+                </button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-sm border border-[#DDD0FF] rounded-none bg-[#FEFCE8] shadow-2xl p-0">
+                <div className="bg-[#2D1B69] px-5 py-3">
+                  <DialogTitle className="text-sm uppercase tracking-widest text-[#FFFDE7]">Add Party Member</DialogTitle>
+                </div>
+                <div className="p-5 space-y-4">
+                  <div>
+                    <label className="text-[10px] uppercase tracking-[0.35em] text-[#8B72BE] block mb-2">Name</label>
+                    <Input
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addProfile()}
+                      placeholder="e.g. Alice"
+                      className="border-[#DDD0FF] rounded-none bg-transparent focus-visible:ring-0 focus-visible:border-[#7C3AED] font-mono text-sm text-[#2D1B69]"
+                    />
+                  </div>
+                  <button
+                    onClick={addProfile}
+                    className="w-full bg-[#F5C24C] text-[#2D1B69] py-2.5 text-xs uppercase tracking-[0.25em] font-bold
+                      hover:bg-[#EAB308] transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Confirm
+                  </button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {profiles.length === 0 && (
+              <span className="text-[10px] text-[#8B72BE] tracking-wide flex items-center gap-1.5">
+                <AlertCircle className="w-3 h-3" /> Add at least one member
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Item list */}
+        <div className="space-y-px border-t border-[#DDD0FF]">
+          {receiptData.items?.map((item, idx) => {
+            const method    = itemMethods[idx] || 'equal';
+            const complete  = isItemComplete(idx);
+            const unitMap   = unitAssignments[idx] || {};
+            const unitTotal = Object.values(unitMap).reduce((a, b) => a + b, 0);
+            const puProg    = method === 'perunit' ? perUnitProgress(idx) : null;
+
+            return (
+              <motion.div
+                key={idx}
+                layout
+                className={`border-b border-[#DDD0FF] bg-[#FEFCE8] transition-all
+                  ${complete ? 'border-l-4 border-l-[#F5C24C]' : 'border-l-4 border-l-transparent'}`}
+              >
+                {/* Item info */}
+                <div className="px-4 pt-4 pb-2 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-wide leading-tight text-[#2D1B69]">{item.name}</p>
+                    <p className="text-[11px] text-[#8B72BE] mt-0.5 tabular-nums">
+                      Qty {item.qty} &times; {fmt(item.price)}
+                      {item.qty > 1 && (
+                        <span className="ml-2 text-[#DDD0FF]">/ {fmt(item.price)} per unit</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {complete ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-[#7C3AED] font-bold">
+                        <Check className="w-3 h-3" /> Done
+                      </span>
+                    ) : puProg ? (
+                      <span className="text-[10px] uppercase tracking-widest text-[#8B72BE] font-bold">
+                        {puProg.assigned}/{puProg.total} units
+                      </span>
+                    ) : (
+                      <span className="text-[10px] uppercase tracking-widest text-[#8B72BE]">Pending</span>
+                    )}
+                    {method === 'unit' && (
+                      <p className="text-[10px] tabular-nums text-[#8B72BE] mt-0.5">{unitTotal}/{item.qty} assigned</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Method selector + assignment controls */}
+                <div className="px-4 pb-4">
+                  {/* Method buttons */}
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {[
+                      { value: 'equal',   label: '= Equal'    },
+                      { value: 'unit',    label: '# Units'    },
+                      { value: 'solo',    label: '→ Solo'     },
+                      ...(item.qty > 1
+                        ? [{ value: 'perunit', label: '÷ Per Unit' }]
+                        : []),
+                    ].map(({ value, label }) => {
+                      const isActive = method === value;
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => setItemMethod(idx, value)}
+                          className={`px-2.5 py-1 text-[9px] uppercase tracking-widest font-bold border transition-colors
+                            ${isActive
+                              ? 'bg-[#2D1B69] text-[#FFFDE7] border-[#2D1B69]'
+                              : 'bg-transparent text-[#8B72BE] border-[#DDD0FF] hover:border-[#7C3AED] hover:text-[#7C3AED]'}`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {profiles.length === 0 ? (
+                    <p className="text-[10px] text-[#8B72BE] tracking-wide">Add party members above to assign this item.</p>
+                  ) : method === 'perunit' ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: item.qty }, (_, u) => {
+                        const unitPeeps = (perUnitSlots[idx] || {})[u] || [];
+                        const share     = unitPeeps.length > 1 ? fmt(item.price / unitPeeps.length) : null;
+                        return (
+                          <div key={u} className="border border-dashed border-[#DDD0FF] p-3 bg-[#FFFDE7]">
+                            {/* Unit header */}
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[9px] uppercase tracking-[0.3em] text-[#8B72BE] font-bold">
+                                Unit {u + 1} — {fmt(item.price)}
+                              </span>
+                              {unitPeeps.length > 0 && (
+                                <span className="text-[9px] text-[#7C3AED] uppercase tracking-widest font-bold">
+                                  {unitPeeps.length === 1
+                                    ? 'Solo'
+                                    : `÷${unitPeeps.length} = ${share} each`}
+                                </span>
+                              )}
+                            </div>
+                            {/* Person chips for this unit */}
+                            <div className="flex flex-wrap gap-1.5">
+                              {profiles.map(p => {
+                                const isOn = unitPeeps.includes(p.id);
+                                return (
+                                  <button
+                                    key={p.id}
+                                    onClick={() => togglePerUnit(idx, u, p.id)}
+                                    className="flex items-center gap-1 px-2.5 py-1 border text-[10px] font-bold uppercase tracking-wide transition-all"
+                                    style={isOn
+                                      ? { backgroundColor: p.color, borderColor: p.color, color: '#fff' }
+                                      : { backgroundColor: 'transparent', borderColor: '#DDD0FF', color: '#8B72BE' }}
+                                  >
+                                    <User className="w-2.5 h-2.5" />
+                                    {p.name.length > 8 ? p.name.slice(0, 8) + '..' : p.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {profiles.map((p) => {
+                        if (method === 'unit') {
+                          const qty = unitMap[p.id] || 0;
+                          return (
+                            <div key={p.id} className="flex items-center border border-[#DDD0FF]">
+                              <button
+                                onClick={() => changeUnit(idx, p.id, -1)}
+                                className="px-2 py-1.5 hover:bg-[#EDE9FE] transition-colors text-[#8B72BE] hover:text-[#DC2626]"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <div
+                                className="px-3 py-1.5 border-x border-[#DDD0FF] text-xs font-bold uppercase tracking-wide min-w-[4rem] text-center transition-colors"
+                                style={qty > 0
+                                  ? { backgroundColor: p.color, borderColor: p.color, color: '#fff' }
+                                  : { color: '#8B72BE' }}
+                              >
+                                {qty > 0 ? `${p.name.slice(0, 4)} ×${qty}` : p.name.length > 5 ? p.name.slice(0, 5) + '..' : p.name}
+                              </div>
+                              <button
+                                onClick={() => changeUnit(idx, p.id, 1)}
+                                className="px-2 py-1.5 hover:bg-[#EDE9FE] transition-colors text-[#8B72BE] hover:text-[#7C3AED]"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        if (method === 'solo') {
+                          const isSelected = soloAssignments[idx] === p.id;
+                          return (
+                            <button
+                              key={p.id}
+                              onClick={() => setSolo(idx, p.id)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 border text-xs font-bold uppercase tracking-wide transition-all"
+                              style={isSelected
+                                ? { backgroundColor: p.color, borderColor: p.color, color: '#fff' }
+                                : { backgroundColor: 'transparent', borderColor: '#DDD0FF', color: '#8B72BE' }}
+                            >
+                              <User className="w-3 h-3" />
+                              {p.name.length > 8 ? p.name.slice(0, 8) + '..' : p.name}
+                              {isSelected && <Check className="w-3 h-3 ml-1" />}
+                            </button>
+                          );
+                        }
+
+                        // equal (default)
+                        const isOn = (assignments[idx] || []).includes(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => toggleEqual(idx, p.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 border text-xs font-bold uppercase tracking-wide transition-all"
+                            style={isOn
+                              ? { backgroundColor: p.color, borderColor: p.color, color: '#fff' }
+                              : { backgroundColor: 'transparent', borderColor: '#DDD0FF', color: '#8B72BE' }}
+                          >
+                            <User className="w-3 h-3" />
+                            {p.name.length > 8 ? p.name.slice(0, 8) + '..' : p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Calculate CTA */}
+        <div className="mt-8">
+          {profiles.length === 0 ? (
+            <div className="border border-dashed border-[#DDD0FF] p-4 text-center">
+              <p className="text-xs uppercase tracking-widest text-[#8B72BE]">Add party members to proceed</p>
+            </div>
+          ) : (
+            <button
+              onClick={calculateSplit}
+              className="w-full bg-[#F5C24C] text-[#2D1B69] py-4 text-sm uppercase tracking-[0.25em] font-bold
+                hover:bg-[#EAB308] active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+            >
+              Calculate Split
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
 }

@@ -1,288 +1,173 @@
 'use client';
 
-import { Button } from "@/components/ui/button";
-import { ArrowDown, Camera, Trash, Plus } from "lucide-react";
-import { motion } from "framer-motion";
-import { useRef, useState } from "react";
+import { Receipt, Upload, Camera } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import StepBar from "@/components/ui/StepBar";
 import Loader from "@/components/ui/loader";
+import Toast from "@/components/ui/Toast";
 import Footer from "@/components/ui/footer";
 
 export default function HomePage() {
-  const uploadRef = useRef(null);
-  const aiReceiptRef = useRef(null);
-  const fileInputRef = useRef(null);
+  const fileInputRef   = useRef(null);
   const cameraInputRef = useRef(null);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [aiResult, setAiResult] = useState(null);
-
+  const loadingRef     = useRef(false);
+  const [loading,     setLoading]     = useState(false);
+  const [pasteActive, setPasteActive] = useState(false);
+  const [toastMsg,    setToastMsg]    = useState(null);
   const router = useRouter();
 
-  const scrollToUpload = () => {
-    uploadRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const processFile = useCallback(async (file) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setImagePreview(url);
+    const fd = new FormData();
+    fd.append('receipt', file);
 
-      const formData = new FormData();
-      formData.append("receipt", file);
-
-      try {
-        setLoading(true);
-        const res = await fetch("/api/process-receipt", {
-          method: "POST",
-          body: formData,
-        });
-
-        const data = await res.json();
-        setLoading(false);
-
-        setAiResult(data);
-
-        setTimeout(() => {
-          aiReceiptRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-      } catch (error) {
-        console.error("Error uploading to API:", error);
-        setLoading(false);
-      }
-    }
-  };
-
-  const goToAssignPage = async () => {
-    setLoading(true); // Show loader immediately
     try {
-      const response = await fetch("/api/save-result", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(aiResult),
-      });
+      const aiRes  = await fetch('/api/process-receipt', { method: 'POST', body: fd });
+      const aiData = await aiRes.json();
 
-      const resJson = await response.json();
-      if (resJson.success) {
-        setTimeout(() => {
-          router.push(`/assign/${resJson.id}`);
-        }, 1200); 
+      const saveRes  = await fetch('/api/save-result', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ currency: 'IDR', ...aiData }),
+      });
+      const saved = await saveRes.json();
+
+      if (saved.success) {
+        router.push(`/review/${saved.id}`);
       } else {
         setLoading(false);
-        alert("Failed to save receipt to database.");
+        loadingRef.current = false;
+        setToastMsg('Failed to save receipt. Please try again.');
       }
     } catch (err) {
+      console.error(err);
       setLoading(false);
-      console.error("Error saving to MongoDB:", err);
-      alert("Error saving receipt.");
+      loadingRef.current = false;
     }
+  }, [router]);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
   };
 
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file?.type.startsWith('image/')) processFile(file);
+  };
+
+  useEffect(() => {
+    const handlePaste = (e) => {
+      for (const item of e.clipboardData?.items || []) {
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            setPasteActive(true);
+            setTimeout(() => setPasteActive(false), 600);
+            processFile(file);
+          }
+          return;
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [processFile]);
+
   return (
-    <main className="bg-[#FFF8F0] text-[#3A2C5A]">
-      {loading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80">
-          <Loader message="Preparing split bill page. Please wait..." />
+    <div className="min-h-screen flex flex-col bg-[#FFFDE7] text-[#2D1B69]">
+      {toastMsg && <Toast message={toastMsg} type="error" onClose={() => setToastMsg(null)} />}
+      {loading && <Loader message="Scanning receipt data..." />}
+
+      {/* Header */}
+      <header className="bg-[#2D1B69] text-[#FFFDE7] border-b border-[#1E1245] sticky top-0 z-40">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <Receipt className="w-4 h-4 text-[#F5C24C]" />
+            <span className="text-sm uppercase tracking-[0.25em] font-bold">Angelica's Split Bill</span>
+          </div>
+          <span className="text-[10px] text-[#8B72BE] tracking-[0.2em] uppercase hidden sm:block">by Angelica</span>
         </div>
-      )}
-      <section className="min-h-screen flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-[#FDF1E6] to-[#F7E1FF]">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-4xl md:text-6xl font-bold mb-4"
-        >
-          Split Bill by Angelica's
-        </motion.h1>
+      </header>
 
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
-          className="text-lg md:text-xl text-[#5A4B81] mb-8"
-        >
-          Upload or scan your receipt. Let AI reads your receipts. Split the bills. Share instantly.
-        </motion.p>
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
+        <StepBar current={1} />
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4, duration: 0.4 }}
-        >
-          <Button onClick={scrollToUpload} size="lg" className="bg-[#F5C24C] hover:bg-[#ecc043] text-[#3A2C5A] text-lg px-6 py-4 rounded-full shadow-lg">
-            Get Started
-          </Button>
-        </motion.div>
+        {/* Section header */}
+        <div className="mb-6">
+          <p className="text-[10px] uppercase tracking-[0.45em] text-[#7C3AED] mb-1.5">Step 01 of 04</p>
+          <h1 className="text-3xl font-bold uppercase tracking-tight leading-none text-[#2D1B69]">Upload Receipt</h1>
+          <p className="text-sm text-[#5B3F8C] mt-2 leading-relaxed">
+            Upload, photograph, or paste a receipt image to begin.
+          </p>
+        </div>
 
-        <ArrowDown onClick={scrollToUpload} className="mt-12 animate-bounce text-[#BCA1E2] w-8 h-8" />
-      </section>
-
-      <section ref={uploadRef} className="min-h-screen flex flex-col justify-center items-center px-6 py-24 bg-white text-center">
-        <h2 className="text-3xl md:text-4xl font-semibold text-[#3A2C5A] mb-6">Upload or Scan Your Receipt</h2>
-        <p className="text-md md:text-lg text-[#5A4B81] mb-8 max-w-xl">
-          Drag and drop your receipt here, or use your camera.
-        </p>
-
+        {/* Upload zone */}
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="w-full max-w-md bg-[#F9F5FF] border-2 border-dashed border-[#BCA1E2] rounded-2xl p-8 cursor-pointer hover:bg-[#F5EDFF] transition-all"
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          className={`relative border-2 border-dashed bg-[#FEFCE8] cursor-pointer transition-all p-12 text-center group
+            ${pasteActive
+              ? 'border-[#F5C24C] bg-[#FFFBEB]'
+              : 'border-[#DDD0FF] hover:border-[#F5C24C] hover:bg-[#FFFBEB]'}`}
         >
-          <p className="text-[#5A4B81]">Click to upload from device</p>
-          {imagePreview && (
-            <img src={imagePreview} alt="Preview" className="mt-4 rounded-xl max-h-60 object-contain mx-auto" />
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-        </div>
+          <span className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-[#7C3AED] opacity-50 group-hover:opacity-100 transition-opacity" />
+          <span className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-[#7C3AED] opacity-50 group-hover:opacity-100 transition-opacity" />
+          <span className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-[#7C3AED] opacity-50 group-hover:opacity-100 transition-opacity" />
+          <span className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-[#7C3AED] opacity-50 group-hover:opacity-100 transition-opacity" />
 
-        <div className="mt-6">
-          <Button onClick={() => cameraInputRef.current?.click()} variant="outline" className="text-[#3A2C5A] border-[#BCA1E2] hover:bg-[#F5EDFF]">
-            <Camera className="mr-2 h-5 w-5" /> Use Camera
-          </Button>
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-        </div>
-      </section>
-
-      {aiResult && (
-        <section ref={aiReceiptRef} className="w-full max-w-4xl mx-auto px-4 py-10">
-          <h1 className="text-3xl font-bold mb-6 text-center">Receipt Info</h1>
-
-          <div className="bg-[#F9F5FF] rounded-xl border border-[#E2D6F3] p-6">
-            <h3 className="text-xl font-semibold mb-4 text-center">General Information</h3>
-
-            <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white">
-              <label className="text-sm text-[#5A4B81]">Restaurant</label>
-              <input
-                className="border rounded px-3 py-2 text-sm"
-                value={aiResult.restaurant || ""}
-                onChange={(e) => setAiResult({ ...aiResult, restaurant: e.target.value })}
-              />
-            </div>
-
-            <div className="flex flex-col mb-4 border rounded-lg p-4 bg-white">
-              <label className="text-sm text-[#5A4B81]">Date</label>
-              <input
-                className="border rounded px-3 py-2 text-sm"
-                value={aiResult.date || ""}
-                onChange={(e) => setAiResult({ ...aiResult, date: e.target.value })}
-              />
-            </div>
-
-            <h3 className="text-xl font-semibold mb-4 text-center">Items</h3>
-
-            <div className="space-y-4">
-              {aiResult.items?.map((item, index) => (
-                <div key={index} className="flex flex-col gap-2 border rounded-lg p-4 bg-white shadow-sm relative">
-                  <div className="absolute top-3 right-3 text-red-500 cursor-pointer">
-                    <Trash
-                      onClick={() => {
-                        const updatedItems = aiResult.items.filter((_, i) => i !== index);
-                        setAiResult({ ...aiResult, items: updatedItems });
-                      }}
-                      size={18}
-                    />
-                  </div>
-
-                  <div className="flex flex-col">
-                    <label className="text-sm text-[#5A4B81]">Name</label>
-                    <input
-                      className="border rounded px-3 py-2 text-sm"
-                      value={item.name || ""}
-                      onChange={(e) => {
-                        const updatedItems = [...aiResult.items];
-                        updatedItems[index].name = e.target.value;
-                        setAiResult({ ...aiResult, items: updatedItems });
-                      }}
-                    />
-                  </div>
-
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 flex flex-col">
-                      <label className="text-sm text-[#5A4B81]">Qty</label>
-                      <input
-                        type="number"
-                        className="border rounded px-3 py-2 text-sm"
-                        value={item.qty}
-                        onChange={(e) => {
-                          const updatedItems = [...aiResult.items];
-                          updatedItems[index].qty = parseInt(e.target.value) || 0;
-                          setAiResult({ ...aiResult, items: updatedItems });
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col">
-                      <label className="text-sm text-[#5A4B81]">Price</label>
-                      <input
-                        type="text"
-                        className="border rounded px-3 py-2 text-sm"
-                        value={item.price?.toLocaleString("id-ID") || "0"}
-                        onChange={(e) => {
-                          const numericValue = parseInt(e.target.value.replace(/[^0-9]/g, "")) || 0;
-                          const updatedItems = [...aiResult.items];
-                          updatedItems[index].price = numericValue;
-                          setAiResult({ ...aiResult, items: updatedItems });
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              <Button
-                variant="outline"
-                className="mt-4 w-full border-[#BCA1E2] hover:bg-[#F5EDFF] text-[#3A2C5A]"
-                onClick={() => {
-                  const newItem = { name: "", qty: 1, price: 0 };
-                  setAiResult({ ...aiResult, items: [...(aiResult.items || []), newItem] });
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" /> Add Item
-              </Button>
-            </div>
-
-            <h3 className="text-xl font-semibold mb-4 text-center mt-6">Tax</h3>
-            <div className="flex flex-col border rounded-lg p-4 bg-white">
-              <label className="text-sm text-[#5A4B81]">Tax Amount</label>
-              <input
-                type="text"
-                className="border rounded px-3 py-2 text-sm"
-                value={(aiResult.tax || 0).toLocaleString("id-ID")}
-                onChange={(e) =>
-                  setAiResult({
-                    ...aiResult,
-                    tax: parseInt(e.target.value.replace(/[^0-9]/g, "")) || 0,
-                  })
-                }
-              />
+          <div className="flex flex-col items-center gap-3 py-2">
+            <Upload className={`w-10 h-10 transition-colors ${pasteActive ? 'text-[#F5C24C]' : 'text-[#DDD0FF] group-hover:text-[#F5C24C]'}`} />
+            <div>
+              <p className="text-sm font-bold uppercase tracking-widest text-[#5B3F8C]">
+                {pasteActive ? 'Image Pasted!' : 'Upload Receipt'}
+              </p>
+              <p className="text-xs text-[#8B72BE] mt-1 tracking-wide">Drag & drop, click to browse, or Ctrl+V to paste</p>
             </div>
           </div>
 
-          <div className="text-center">
-            <Button
-              onClick={goToAssignPage}
-              className="mt-6 px-25 py-5 bg-[#F5C24C] text-[#3A2C5A] hover:bg-[#ecc043]"
-            >
-              Assign Split Bill →
-            </Button>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+        </div>
+
+        {/* Camera button */}
+        <div className="mt-4">
+          <button
+            onClick={() => cameraInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-2.5 border border-[#DDD0FF] text-xs uppercase tracking-widest
+              text-[#5B3F8C] hover:border-[#7C3AED] hover:text-[#7C3AED] transition-colors"
+          >
+            <Camera className="w-3.5 h-3.5" /> Use Camera
+          </button>
+          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
+        </div>
+
+        {/* How it works */}
+        <div className="mt-10">
+          <p className="text-[10px] uppercase tracking-[0.4em] text-[#8B72BE] mb-4">How It Works</p>
+          <div className="grid grid-cols-4 gap-px bg-[#DDD0FF] border border-[#DDD0FF]">
+            {[
+              { n: '01', title: 'Upload',  desc: 'Drop or paste your receipt' },
+              { n: '02', title: 'Review',  desc: 'Verify and edit extracted data' },
+              { n: '03', title: 'Assign',  desc: 'Split each item your way' },
+              { n: '04', title: 'Summary', desc: 'Share totals with the party' },
+            ].map((s) => (
+              <div key={s.n} className="bg-[#FEFCE8] p-4">
+                <p className="text-[#F5C24C] font-bold text-xl leading-none mb-2 tabular-nums">{s.n}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#2D1B69] mb-1">{s.title}</p>
+                <p className="text-[10px] text-[#8B72BE] leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
           </div>
-        </section>
-      )}
+        </div>
+      </main>
+
       <Footer />
-    </main>
+    </div>
   );
 }
