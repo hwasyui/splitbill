@@ -205,15 +205,22 @@ export default function AssignPage() {
         const selected = assignments[idx] || [];
         if (selected.length > 0) {
           const share = total / selected.length;
-          selected.forEach(pid => { if (subtotals[pid]) subtotals[pid].subtotal += share; });
+          const label = selected.length > 1 ? `${item.name} ÷ ${selected.length}` : item.name;
+          selected.forEach(pid => {
+            if (!subtotals[pid]) return;
+            subtotals[pid].subtotal += share;
+            subtotals[pid].items.push({ name: label, qty: item.qty, price: item.price, total: share });
+          });
         } else {
           ensureUnassigned();
           subtotals['unassigned'].subtotal += total;
+          subtotals['unassigned'].items.push({ name: item.name, qty: item.qty, price: item.price, total });
         }
       }
     });
 
-    const perTax     = tempProfiles.length > 0 ? tax / tempProfiles.length : 0;
+    // tax is divided only among real people; the virtual unassigned bucket gets no tax share
+    const perTax = profiles.length > 0 ? tax / profiles.length : 0;
     const finalSplit = Object.values(subtotals)
       .map(p => ({
         id:       p.id,

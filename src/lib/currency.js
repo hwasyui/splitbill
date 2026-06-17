@@ -35,6 +35,6 @@ export function parseAmount(raw, currencyCode) {
 
 export function inputDisplayValue(amount, currencyCode) {
   const c = getCurrency(currencyCode);
-  if (c.decimals === 0) return Math.round(amount).toLocaleString(c.locale);
+  if (c.decimals === 0) return Math.round(amount).toString();
   return Number(amount).toFixed(c.decimals);
 }

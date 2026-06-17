@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://splitbill.angelicas.xyz/sitemap.xml
+Sitemap: https://splitbill.angelica-whiharto.com/sitemap.xml
