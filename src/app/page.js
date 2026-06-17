@@ -89,9 +89,9 @@ export default function HomePage() {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Receipt className="w-4 h-4 text-[#F5C24C]" />
-            <span className="text-sm uppercase tracking-[0.25em] font-bold">Angelica's Split Bill</span>
+            <span className="text-sm uppercase tracking-[0.25em] font-bold">Angelica's Splitbill</span>
           </div>
-          <span className="text-[10px] text-[#8B72BE] tracking-[0.2em] uppercase hidden sm:block">by Angelica</span>
+          <span className="text-[10px] text-[#8B72BE] tracking-[0.2em] uppercase hidden sm:block">by Angelica Suti Whiharto</span>
         </div>
       </header>
 
@@ -103,7 +103,7 @@ export default function HomePage() {
           <p className="text-[10px] uppercase tracking-[0.45em] text-[#7C3AED] mb-1.5">Step 01 of 04</p>
           <h1 className="text-3xl font-bold uppercase tracking-tight leading-none text-[#2D1B69]">Upload Receipt</h1>
           <p className="text-sm text-[#5B3F8C] mt-2 leading-relaxed">
-            Upload, photograph, or paste a receipt image to begin.
+            Angelica's Splitbill by Angelica Suti Whiharto helps you upload, photograph, or paste a receipt image to begin.
           </p>
         </div>
 
