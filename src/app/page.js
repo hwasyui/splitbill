@@ -101,9 +101,9 @@ export default function HomePage() {
         {/* Section header */}
         <div className="mb-6">
           <p className="text-[10px] uppercase tracking-[0.45em] text-[#7C3AED] mb-1.5">Step 01 of 04</p>
-          <h1 className="text-3xl font-bold uppercase tracking-tight leading-none text-[#2D1B69]">Upload Receipt</h1>
+          <h1 className="text-3xl font-bold uppercase tracking-tight leading-none text-[#2D1B69]">Angelica's Splitbill</h1>
           <p className="text-sm text-[#5B3F8C] mt-2 leading-relaxed">
-            Angelica's Splitbill by Angelica Suti Whiharto helps you upload, photograph, or paste a receipt image to begin.
+            A split bill app by Angelica Suti Whiharto. Upload, photograph, or paste a receipt image to begin.
           </p>
         </div>
 
