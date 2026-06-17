@@ -3,6 +3,7 @@
 import { Receipt, Upload, Camera } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import StepBar from "@/components/ui/StepBar";
 import Loader from "@/components/ui/loader";
 import Toast from "@/components/ui/Toast";
@@ -14,6 +15,7 @@ export default function HomePage() {
   const loadingRef     = useRef(false);
   const [loading,     setLoading]     = useState(false);
   const [pasteActive, setPasteActive] = useState(false);
+  const [dragActive,  setDragActive]  = useState(false);
   const [toastMsg,    setToastMsg]    = useState(null);
   const router = useRouter();
 
@@ -55,10 +57,16 @@ export default function HomePage() {
     if (file) processFile(file);
   };
 
+  const handleDragEnter = (e) => { e.preventDefault(); setDragActive(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); if (!e.currentTarget.contains(e.relatedTarget)) setDragActive(false); };
+  const handleDragOver  = (e) => { e.preventDefault(); };
   const handleDrop = (e) => {
     e.preventDefault();
+    setDragActive(false);
     const file = e.dataTransfer.files?.[0];
-    if (file?.type.startsWith('image/')) processFile(file);
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setToastMsg('Please drop an image file.'); return; }
+    processFile(file);
   };
 
   useEffect(() => {
@@ -87,11 +95,11 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-[#2D1B69] text-[#FFFDE7] border-b border-[#1E1245] sticky top-0 z-40">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <Receipt className="w-4 h-4 text-[#F5C24C]" />
-            <span className="text-sm uppercase tracking-[0.25em] font-bold">Angelica's Splitbill</span>
-          </div>
-          <span className="text-[10px] text-[#8B72BE] tracking-[0.2em] uppercase hidden sm:block">by Angelica Suti Whiharto</span>
+            <span className="text-sm uppercase tracking-[0.25em] font-bold">Angelica's Split Bill</span>
+          </Link>
+          <span className="text-[10px] text-[#8B72BE] tracking-[0.2em] uppercase hidden sm:block">by Angelica</span>
         </div>
       </header>
 
@@ -110,23 +118,27 @@ export default function HomePage() {
         {/* Upload zone */}
         <div
           onClick={() => fileInputRef.current?.click()}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
           onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          className={`relative border-2 border-dashed bg-[#FEFCE8] cursor-pointer transition-all p-12 text-center group
-            ${pasteActive
-              ? 'border-[#F5C24C] bg-[#FFFBEB]'
-              : 'border-[#DDD0FF] hover:border-[#F5C24C] hover:bg-[#FFFBEB]'}`}
+          className={`relative border-2 border-dashed cursor-pointer transition-all p-12 text-center group
+            ${dragActive
+              ? 'border-[#F5C24C] bg-[#FFFBEB] scale-[1.01]'
+              : pasteActive
+                ? 'border-[#F5C24C] bg-[#FFFBEB]'
+                : 'border-[#DDD0FF] bg-[#FEFCE8] hover:border-[#F5C24C] hover:bg-[#FFFBEB]'}`}
         >
-          <span className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-[#7C3AED] opacity-50 group-hover:opacity-100 transition-opacity" />
-          <span className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-[#7C3AED] opacity-50 group-hover:opacity-100 transition-opacity" />
-          <span className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-[#7C3AED] opacity-50 group-hover:opacity-100 transition-opacity" />
-          <span className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-[#7C3AED] opacity-50 group-hover:opacity-100 transition-opacity" />
+          <span className={`absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-[#7C3AED] transition-opacity ${dragActive ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'}`} />
+          <span className={`absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-[#7C3AED] transition-opacity ${dragActive ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'}`} />
+          <span className={`absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-[#7C3AED] transition-opacity ${dragActive ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'}`} />
+          <span className={`absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-[#7C3AED] transition-opacity ${dragActive ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'}`} />
 
           <div className="flex flex-col items-center gap-3 py-2">
-            <Upload className={`w-10 h-10 transition-colors ${pasteActive ? 'text-[#F5C24C]' : 'text-[#DDD0FF] group-hover:text-[#F5C24C]'}`} />
+            <Upload className={`w-10 h-10 transition-colors ${dragActive || pasteActive ? 'text-[#F5C24C]' : 'text-[#DDD0FF] group-hover:text-[#F5C24C]'}`} />
             <div>
               <p className="text-sm font-bold uppercase tracking-widest text-[#5B3F8C]">
-                {pasteActive ? 'Image Pasted!' : 'Upload Receipt'}
+                {dragActive ? 'Drop to Upload' : pasteActive ? 'Image Pasted!' : 'Upload Receipt'}
               </p>
               <p className="text-xs text-[#8B72BE] mt-1 tracking-wide">Drag & drop, click to browse, or Ctrl+V to paste</p>
             </div>

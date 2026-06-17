@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { Receipt, Trash2, Plus, ChevronRight, RefreshCw, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import StepBar from '@/components/ui/StepBar';
@@ -78,10 +79,10 @@ export default function ReviewPage() {
       {/* Header */}
       <header className="bg-[#2D1B69] text-[#FFFDE7] border-b border-[#1E1245] sticky top-0 z-40">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <Receipt className="w-4 h-4 text-[#F5C24C]" />
             <span className="text-sm uppercase tracking-[0.25em] font-bold">Angelica's Split Bill</span>
-          </div>
+          </Link>
           <span className="text-[10px] text-[#8B72BE] tracking-[0.2em] uppercase hidden sm:block">by Angelica</span>
         </div>
       </header>

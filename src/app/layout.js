@@ -12,30 +12,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Angelica's Splitbill - Split Bill App by Angelica Suti Whiharto",
+  title: "Angelica's Split Bill | Angelica Suti Whiharto",
   description:
-    "Angelica's Splitbill is a simple split bill app by Angelica Suti Whiharto for sharing receipts and expenses with friends.",
+    "Upload a receipt, review the items, assign each one to your group, and instantly see how much everyone owes. Fast, free, and works with any currency.",
   keywords: [
-    "Angelica's Splitbill",
+    "split bill",
+    "receipt splitter",
+    "bill calculator",
     "Angelica Split Bill",
-    "Angelica Splitbill",
-    "Split Bill",
     "Angelica Suti Whiharto",
-    "Angelica Suti Whiharto splitbill",
+    "expense sharing",
+    "group bill",
   ],
   metadataBase: new URL("https://splitbill.angelica-whiharto.com"),
   openGraph: {
-    title: "Angelica's Splitbill - Split Bill App",
+    title: "Angelica's Split Bill | Angelica Suti Whiharto",
     description:
-      "Split receipts and expenses with Angelica's Splitbill by Angelica Suti Whiharto.",
+      "Upload a receipt, assign each item to your group, and instantly see how much everyone owes.",
     url: "https://splitbill.angelica-whiharto.com",
-    siteName: "Angelica's Splitbill",
+    siteName: "Angelica's Split Bill",
     images: [
       {
         url: "/image.png",
         width: 1200,
         height: 630,
-        alt: "Split Bill App",
+        alt: "Angelica's Split Bill — Receipt Splitter",
       },
     ],
     locale: "en_US",
@@ -47,9 +48,6 @@ export const metadata = {
   },
   alternates: {
     canonical: "https://splitbill.angelica-whiharto.com/",
-  },
-  icons: {
-    icon: "favicon.ico", 
   },
 };
 
