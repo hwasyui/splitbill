@@ -42,6 +42,13 @@ export const metadata = {
     locale: "en_US",
     type: "website",
   },
+  icons: {
+    icon: [
+      { url: '/angel-logo.svg', type: 'image/svg+xml' },
+      { url: '/angel-logo.png', type: 'image/png' },
+    ],
+    apple: '/angel-logo.png',
+  },
   robots: {
     index: true,
     follow: true,
